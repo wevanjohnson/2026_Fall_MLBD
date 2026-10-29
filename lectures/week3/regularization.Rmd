@@ -81,14 +81,16 @@ Usually we can't have both:
 * **Regularization** restricts or shrinks estimates toward zero:
   * reduces the impact of unimportant features
   * adds a little bias to cut variance and overfitting
-  * improves performance on new data\footnote{Adapted from: https://www.analyticssteps.com/blogs/l2-and-l1-regularization-machine-learning}
+  * improves performance on new data
+
+\scriptsize
+See *An Introduction to Statistical Learning* (James et al., 2nd ed.), Ch. 6: https://www.statlearning.com
 
 ## Regularization in Machine Learning
 \Large
 Examples:
 
 * Regression: penalize coefficients for parsimonious models (variable selection)
-* K-means: restrict clusters to avoid redundant groups
 * Neural networks: constrain the weights
 * Random forests: limit tree depth
 
@@ -392,6 +394,50 @@ small <- replicate(20, {
     glm  = auc(predict(g, data.frame(X)[-train, ]), y[-train])) })
 round(rowMeans(small), 3)
 ```
+
+## Tuning $\alpha$ and $\lambda$ together with caret
+\small
+`caret::train` (week 2) searches over both $\alpha$ and $\lambda$ with cross-validation:
+```{r nhanes-caret, message=FALSE, warning=FALSE}
+library(caret)
+dtr <- data.frame(Diabetes = factor(ifelse(y == 1, "Yes", "No")), X)[train, ]
+set.seed(2026)
+fit_caret <- train(Diabetes ~ ., data = dtr, method = "glmnet",
+                   family = "binomial", metric = "ROC", tuneLength = 5,
+                   trControl = trainControl(method = "cv", number = 10,
+                     classProbs = TRUE, summaryFunction = twoClassSummary))
+```
+
+## Tuning $\alpha$ and $\lambda$ together with caret
+```{r nhanes-caret-plot, echo=FALSE, fig.height=3.2, fig.width=7.5, out.width="65%", fig.align="center"}
+plot(fit_caret)
+```
+
+\normalsize
+Each line is one $\lambda$. With small $\lambda$ the mix barely matters; with large $\lambda$, more lasso (higher $\alpha$) drops too many variables. Best: $\alpha$ = `r fit_caret$bestTune$alpha`, $\lambda$ = `r signif(fit_caret$bestTune$lambda, 2)`.
+
+## How stable is the lasso's selection?
+Refit the lasso on 50 bootstrap samples and count how often each variable is kept:
+\small
+```{r nhanes-boot, fig.show='hide'}
+set.seed(1)
+sel <- replicate(50, {
+  b  <- sample(train, replace = TRUE)
+  cv <- cv.glmnet(X[b, ], y[b], family = "binomial", alpha = 1, nfolds = 5)
+  as.numeric(coef(cv, s = "lambda.1se")[-1] != 0) })
+freq <- sort(setNames(rowMeans(sel), colnames(X)), decreasing = TRUE)
+```
+
+## How stable is the lasso's selection?
+```{r nhanes-boot-plot, echo=FALSE, fig.height=3.8, fig.width=9, out.width="85%", fig.align="center"}
+par(mar = c(9, 4, 1, 1))
+barplot(freq, las = 2, ylab = "Selection frequency", cex.names = 0.75,
+        col = ifelse(freq > 0.8, "steelblue", "grey"))
+abline(h = 0.8, lty = 2)
+```
+
+\large
+A few variables are always chosen; many come and go. Don't over-interpret a single lasso fit.
 
 ## NHANES: lessons
 \Large

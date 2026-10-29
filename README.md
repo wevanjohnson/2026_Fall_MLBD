@@ -128,7 +128,7 @@ Regression and regularization (Oct 26, 28)
 * Multiple regression
 * Generalized linear models
 * Ridge regression, LASSO, ElasticNet
-* Application: infectious disease epidemiology
+* Application: diabetes risk prediction in NHANES (CDC National Health and Nutrition Examination Survey)
 
 Unsupervised learning and dimension reduction (Nov 2, 4)
 

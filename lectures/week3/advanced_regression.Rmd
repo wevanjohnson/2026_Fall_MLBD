@@ -30,21 +30,20 @@ img_path <- "regfigs/"
 ```
 
 ## Learning objectives
-\Large
+\large
 By the end of this lecture you should be able to:
 
 * Define regression and its vocabulary (outcome, predictors, errors)
-* Fit simple and multiple linear regression in R
+* Fit simple and multiple linear regression in R, and check residual plots
 * Derive least squares as maximum likelihood under normal errors
 * Compute estimates, standard errors, and tests by hand with matrices
 * Recognize the regression fallacy (regression to the mean)
+* Fit logistic and Poisson regression (GLMs) and interpret odds and rate ratios
+* Recognize confounding and adjust for it
 
 ## Introduction to Regression
 \Large
-We often want to know how two or more variables are related.
-
-* Example: which baseball player statistics predict team success, to build a team on a limited budget?
-* First, the core concepts of regression.
+We often want to know how two or more variables are related, e.g., how a child's height relates to the parents' heights.
 
 ## Introduction to Regression
 \Large
@@ -235,6 +234,27 @@ Interpreting the model:
 * Number of children: not significant (p = 0.0825)
 * $R^2=0.637$ (adjusted 0.635): `father`, `mother`, and `gender` are moderately strong predictors
 
+## Checking the model: residual diagnostics
+\small
+Linear regression assumes linearity, constant variance, and roughly normal errors. Check with residual plots:
+```{r diagnostics, fig.show='hide'}
+par(mfrow = c(2, 2), mar = c(4, 4, 2, 1)); plot(fit2)
+```
+
+## Checking the model: residual diagnostics
+```{r diagnostics-plot, echo=FALSE, out.width="62%", fig.width=8, fig.height=5.2, fig.align='center'}
+par(mfrow = c(2, 2), mar = c(4, 4, 2, 1)); plot(fit2)
+```
+
+## Checking the model: what to look for
+\Large
+* **Residuals vs. fitted:** a curve suggests a missing nonlinear term
+* **Q-Q plot:** points off the line suggest non-normal errors (matters most for small samples)
+* **Scale-location:** a funnel suggests non-constant variance (try a log transform)
+* **Residuals vs. leverage:** points beyond Cook's distance lines are influential
+
+Here everything looks fine.
+
 ## Introduction to Regression
 \Large
 In matrix form, with outcome ${\bf y}=(y_1, \ldots, y_n)$, predictor matrix ${\bf X}$, and coefficients $\beta$ ($p\times 1$):
@@ -243,7 +263,7 @@ $${\bf y}=X\beta+\epsilon, \quad \epsilon\sim N({\bf 0},\sigma^2 I_n).$$
 ## Introduction to Regression
 \Large
 Least squares then minimizes:
-$$\hat\beta=\underset{\beta}\inf\left\{\sum_{i=1}^{n}(y_i-\sum_{j=1}^{p}x_{ij}\beta_j)^2\right\}=\underset{\beta}\inf\left\{({\bf y}-{\bf X}\beta)'({\bf y}-{\bf X}\beta)\right\}$$
+$$\hat\beta=\underset{\beta}{\arg\min}\left\{\sum_{i=1}^{n}(y_i-\sum_{j=1}^{p}x_{ij}\beta_j)^2\right\}=\underset{\beta}{\arg\min}\left\{({\bf y}-{\bf X}\beta)'({\bf y}-{\bf X}\beta)\right\}$$
 
 ## Diversion: Maximum Likelihood for a Normal mean
 \Large
@@ -547,13 +567,119 @@ $$ \frac{Y - .255}{.032} = 0.46 \left( \frac{X - .261}{.023}\right) $$
 
 
 
-## Summary
+## Generalized linear models (GLMs)
 \Large
+What if the outcome is binary (disease yes/no) or a count (number of infections)? A **GLM** has three parts:
+
+* **Random component:** the outcome's distribution (normal, binomial, Poisson, ...)
+* **Linear predictor:** $\eta_i = \beta_0 + \beta_1 x_{i1} + \ldots + \beta_p x_{ip}$
+* **Link function:** connects the mean to the linear predictor, $g(E[y_i]) = \eta_i$
+
+Linear regression is the GLM with a normal outcome and identity link. GLMs are fit by maximum likelihood.
+
+## Common GLMs
+\Large
+\begin{tabular}{lll}
+\hline
+\textbf{Outcome} & \textbf{Model} & \textbf{Link} \\
+\hline
+Continuous & Linear regression & identity: $E[y] = \eta$ \\
+Binary & Logistic regression & logit: $\log\frac{p}{1-p} = \eta$ \\
+Count & Poisson regression & log: $\log E[y] = \eta$ \\
+\hline
+\end{tabular}
+
+\vspace{0.2in}
+In R: `glm(y ~ x, family = binomial)` or `family = poisson`.
+
+## Logistic regression: diabetes in NHANES
+\small
+NHANES (CDC National Health and Nutrition Examination Survey), adults 20+:
+```{r logistic, message=FALSE}
+library(NHANES)
+nh <- NHANES %>% filter(Age >= 20) %>% distinct(ID, .keep_all = TRUE)
+fit_logit <- glm(Diabetes ~ Age + BMI + Gender, data = nh, family = binomial)
+round(summary(fit_logit)$coefficients, 4)
+```
+
+## Logistic regression: odds ratios
+\Large
+Coefficients are on the log-odds scale; exponentiate to get **odds ratios**:
+
+\normalsize
+```{r}
+round(exp(cbind(OR = coef(fit_logit), confint.default(fit_logit))), 3)
+```
+
+\Large
+Each extra year of age multiplies the odds of diabetes by about `r round(exp(coef(fit_logit)["Age"]), 3)`; each BMI unit by about `r round(exp(coef(fit_logit)["BMI"]), 3)`.
+
+## Poisson regression: counts
+\small
+Number of live births for women 20+ in NHANES, by age and education:
+```{r poisson}
+nh_w <- nh %>% filter(Gender == "female", !is.na(nBabies), !is.na(Education))
+fit_pois <- glm(nBabies ~ Age + Education, data = nh_w, family = poisson)
+round(exp(cbind(RR = coef(fit_pois), confint.default(fit_pois))), 3)
+```
+
+\small
+Exponentiated coefficients are **rate ratios**: college graduates have `r round(100 * (1 - exp(coef(fit_pois)["EducationCollege Grad"])))`% fewer births than\
+the reference (8th grade or less), at the same age.
+
+## Poisson regression: check for overdispersion
+\Large
+Poisson assumes mean = variance. Check the ratio of residual deviance to its degrees of freedom:
+
+\normalsize
+```{r}
+fit_pois$deviance / fit_pois$df.residual
+```
+
+\Large
+* Well above 1: **overdispersion**; use `family = quasipoisson` or negative binomial (`MASS::glm.nb`) for honest standard errors
+* Here it's about 0.56: births vary *less* than Poisson predicts, so these standard errors are conservative
+
+## Confounding
+\Large
+A **confounder** is related to both the predictor and the outcome, and can create, hide, or even reverse an association.
+
+Classic example: UC Berkeley graduate admissions, 1973 (`UCBAdmissions` in R).
+
+## Confounding: Simpson's paradox
+\small
+```{r ucb}
+ucb <- as.data.frame(UCBAdmissions) %>%
+  pivot_wider(names_from = Admit, values_from = Freq)
+crude <- glm(cbind(Admitted, Rejected) ~ Gender, data = ucb,
+             family = binomial)
+adj   <- glm(cbind(Admitted, Rejected) ~ Gender + Dept, data = ucb,
+             family = binomial)
+round(exp(c(crude = coef(crude)["GenderFemale"],
+            adjusted = coef(adj)["GenderFemale"])), 2)
+```
+
+## Confounding: Simpson's paradox
+\Large
+* Ignoring department: women had **lower** odds of admission (OR $\approx$ 0.54)
+* Adjusting for department: slightly **higher** odds (OR $\approx$ 1.1)
+* Women applied more to competitive departments: department confounds the comparison
+
+## Confounding in biomedical data
+\Large
+* Age, sex, smoking, socioeconomic status, and **batch** are common confounders
+* Adjust by including confounders in the model (or by design: randomization, matching)
+* Prediction vs. inference: confounders still help prediction, but you can't read coefficients as causal effects without thinking about confounding
+
+## Summary
+\large
 * Linear regression finds the best-fitting line by least squares
 * Least squares = maximum likelihood when errors are normal
 * In matrix form: $\hat\beta = (X^TX)^{-1}X^Ty$, with $Var(\hat\beta) = \sigma^2 (X^TX)^{-1}$
 * Galton's heights: regression was born studying heredity
 * Regression to the mean explains the "sophomore slump": extreme performers drift back
+* Check residual plots; GLMs extend regression to binary (logistic) and count (Poisson) outcomes
+* Confounders can create or reverse associations; adjust for them
 
 ## Session Info
 \tiny

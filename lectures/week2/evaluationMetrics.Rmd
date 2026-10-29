@@ -37,6 +37,8 @@ By the end of this lecture you should be able to:
 * Compute overall accuracy and explain when it misleads
 * Build and read a confusion matrix
 * Define sensitivity, specificity, and related metrics
+* Build and evaluate a gene-expression biomarker for TB: cutoff, ROC curve, AUC
+* Explain how prevalence changes predictive values
 * Choose a metric that fits the biomedical question
 
 ## Evaluation metrics
@@ -318,12 +320,113 @@ Overall accuracy is high despite low sensitivity, because female prevalence is l
 Missing females (low sensitivity) costs less accuracy than missing males would (low specificity).
 
 
-## Summary
+## Application: a blood biomarker for tuberculosis
 \Large
+**Biomarker development:** find a measurable signal that predicts disease, then prove it works in new patients.
+
+* Discovery: which genes differ between active TB and latent infection (LTBI)?
+* Signature: combine a few genes into one **score**
+* Threshold: pick a cutoff for the intended use
+* Validation: test it on samples not used to build it
+
+## The TB NanoString data
+\large
+Blood gene expression for 107 TB-related genes in 179 people with active TB or latent TB infection (Kaipilyawar et al., *Clin Infect Dis*, 2022):
+
+\normalsize
+```{r tb-data, message=FALSE}
+tb <- readRDS("TBnanostring.rds")
+tb$TB_Status <- factor(tb$TB_Status, levels = c("LTBI", "TB"))
+dim(tb)
+table(tb$TB_Status)
+```
+
+## A three-gene signature
+\large
+Sweeney et al. (2016) found a 3-gene score that separates active TB from other conditions: $(\text{GBP5} + \text{DUSP3})/2 - \text{KLF2}$. All three genes are on the panel:
+
+\normalsize
+```{r tb-score, out.width="40%", fig.width=4.5, fig.height=3.5, fig.align='center'}
+tb$score <- (tb$GBP5 + tb$DUSP3) / 2 - tb$KLF2
+boxplot(score ~ TB_Status, data = tb, ylab = "Sweeney3 score")
+```
+
+## Choosing a cutoff
+\large
+Every cutoff gives a different sensitivity and specificity. The **intended use** decides which matters most.
+
+* WHO target for a TB **triage** test: sensitivity $\ge$ 90%, specificity $\ge$ 70%
+* Missing active TB is worse than a false alarm (which gets a confirmatory test)
+
+\normalsize
+```{r tb-cut}
+set.seed(1)
+idx <- createDataPartition(tb$TB_Status, p = 0.7, list = FALSE)
+tb_train <- tb[idx, ]; tb_test <- tb[-idx, ]
+# cutoff that catches 90% of TB cases in the training set
+cut <- quantile(tb_train$score[tb_train$TB_Status == "TB"], 0.10)
+```
+
+## Evaluating on the test set
+\small
+```{r tb-cm}
+pred <- factor(ifelse(tb_test$score > cut, "TB", "LTBI"),
+               levels = c("LTBI", "TB"))
+cm_tb <- confusionMatrix(pred, tb_test$TB_Status, positive = "TB")
+cm_tb$table
+round(cm_tb$byClass[c("Sensitivity", "Specificity",
+                      "Pos Pred Value", "Neg Pred Value")], 3)
+```
+
+\normalsize
+Test sensitivity is a bit below the 90% we aimed for: with only `r sum(tb_test$TB_Status == "TB")` TB cases in the test set, estimates are noisy. (Cross-validation helps; next lecture.)
+
+## ROC curves and AUC
+\Large
+* The **ROC curve** plots sensitivity vs. 1 $-$ specificity across **all** cutoffs
+* The **area under the curve (AUC)**: probability that a random TB case scores higher than a random LTBI case
+* AUC = 0.5 is a coin flip; AUC = 1 is perfect
+* AUC summarizes the score; the cutoff is a separate decision
+
+## ROC curve for the TB score
+\small
+```{r tb-roc, fig.show='hide', message=FALSE}
+library(pROC)
+roc_tb <- roc(tb_test$TB_Status, tb_test$score, levels = c("LTBI", "TB"),
+              direction = "<", quiet = TRUE)
+plot(roc_tb, print.auc = TRUE, legacy.axes = TRUE)
+```
+
+## ROC curve for the TB score
+```{r tb-roc-plot, echo=FALSE, out.width="42%", fig.width=4.5, fig.height=4.5, fig.align='center'}
+plot(roc_tb, print.auc = TRUE, legacy.axes = TRUE)
+```
+
+## Prevalence changes predictive values
+\large
+Sensitivity and specificity belong to the test. **PPV** and **NPV** also depend on how common TB is in the people tested:
+
+\normalsize
+```{r tb-ppv}
+sens <- unname(cm_tb$byClass["Sensitivity"])
+spec <- unname(cm_tb$byClass["Specificity"])
+ppv <- function(prev)
+  sens * prev / (sens * prev + (1 - spec) * (1 - prev))
+round(c(`study (44%)` = ppv(0.44), `clinic (10%)` = ppv(0.10),
+        `screening (1%)` = ppv(0.01)), 3)
+```
+
+\normalsize
+At 1% prevalence, most positives are false alarms: a triage test needs a confirmatory test.
+
+## Summary
+\large
 * Always evaluate on data the model has not seen
 * Overall accuracy can hide poor performance when classes are imbalanced
 * The confusion matrix underlies every classification metric
 * Sensitivity and specificity trade off as the cutoff changes
+* ROC/AUC summarize a biomarker score; the cutoff depends on the intended use
+* PPV and NPV depend on prevalence: a great test can still give mostly false positives in screening
 * Pick metrics by the cost of each type of error (e.g., missed TB case vs. false alarm)
 
 ## Session Info

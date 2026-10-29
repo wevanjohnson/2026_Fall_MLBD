@@ -8,3 +8,8 @@ pygam
 jupyterlab
 statsmodels
 umap-learn
+anndata
+scanpy
+leidenalg
+igraph
+combat

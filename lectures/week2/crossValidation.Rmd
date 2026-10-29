@@ -40,6 +40,7 @@ By the end of this lecture you should be able to:
 * Describe K-fold cross-validation and the bootstrap
 * Use cross-validation to choose a tuning parameter
 * Fit and tune models with caret's `train` function
+* Use CV to develop a TB gene-expression biomarker, and avoid selection bias
 
 ## Cross-validation 
 \Large
@@ -760,13 +761,110 @@ gridExtra::grid.arrange(p2, p1, nrow=1)
 ```
 
 
-## Summary
+## Application: developing a TB biomarker
 \Large
+Back to the TB NanoString data: 179 people (active TB vs. latent infection), 107 genes.
+
+* $p$ (107 genes) is close to $N$ (179 people): easy to overfit
+* Goal: a classifier that works on **new** patients
+* Cross-validation is how we choose and honestly evaluate it
+
+\normalsize
+```{r tb-load}
+tb <- readRDS("TBnanostring.rds")
+tb$TB_Status <- factor(tb$TB_Status, levels = c("LTBI", "TB"))
+```
+
+## kNN on all 107 genes, tuned by CV
+\small
+```{r tb-knn, fig.show='hide'}
+set.seed(1)
+idx <- createDataPartition(tb$TB_Status, p = 0.7, list = FALSE)
+tb_train <- tb[idx, ]; tb_test <- tb[-idx, ]
+ctrl <- trainControl(method = "cv", number = 10, classProbs = TRUE,
+                     summaryFunction = twoClassSummary)
+fit_knn <- train(TB_Status ~ ., data = tb_train, method = "knn",
+                 preProcess = c("center", "scale"), metric = "ROC",
+                 tuneGrid = data.frame(k = seq(3, 75, 6)), trControl = ctrl)
+fit_knn$bestTune
+```
+
+## kNN on all 107 genes, tuned by CV
+```{r tb-knn-plot, echo=FALSE, out.width="55%", fig.width=6, fig.height=3.8, fig.align='center'}
+plot(fit_knn)
+```
+
+\Large
+Cross-validated AUC for each $k$; `train` picks the best and refits on all the training data.
+
+## Checking on the test set
+\normalsize
+```{r tb-knn-test}
+p_knn <- predict(fit_knn, tb_test, type = "prob")[, "TB"]
+pROC::auc(pROC::roc(tb_test$TB_Status, p_knn, levels = c("LTBI", "TB"),
+                    direction = "<", quiet = TRUE))
+confusionMatrix(predict(fit_knn, tb_test), tb_test$TB_Status,
+                positive = "TB")$byClass[c("Sensitivity", "Specificity")]
+```
+
+\Large
+The CV estimate (`r round(max(fit_knn$results$ROC), 2)`) and the test AUC are close: CV gave a fair estimate without touching the test set.
+
+## A common pitfall: selecting genes before CV
+\Large
+A tempting shortcut:
+
+1. Use **all** samples to find the 10 genes that best separate TB from LTBI
+2. Then cross-validate a classifier built on those 10 genes
+
+The CV error is now **optimistic**: the test folds already helped choose the genes. This **selection bias** has inflated many published biomarkers (Ambroise & McLachlan, *PNAS*, 2002).
+
+## Demonstrating selection bias
+Shuffle the labels so **no** gene is truly related to TB status, then compare selecting genes outside vs. inside the CV loop:
+\scriptsize
+```{r tb-selbias}
+X <- scale(as.matrix(tb[, -1]))
+score_cv <- function(X, y, inside, ntop = 10) {
+  pick <- function(Xs, ys) {                 # top genes by t-statistic
+    t <- apply(Xs, 2, function(g) t.test(g[ys == "TB"], g[ys == "LTBI"])$statistic)
+    top <- order(abs(t), decreasing = TRUE)[1:ntop]
+    list(top = top, sign = sign(t[top])) }
+  folds <- createFolds(y, k = 5); p <- numeric(length(y))
+  if (!inside) sel <- pick(X, y)             # WRONG: uses all samples
+  for (f in folds) {
+    if (inside) sel <- pick(X[-f, ], y[-f])  # RIGHT: training folds only
+    p[f] <- X[f, sel$top, drop = FALSE] %*% sel$sign }
+  as.numeric(pROC::auc(pROC::roc(y, p, levels = c("LTBI", "TB"),
+                                 direction = "<", quiet = TRUE))) }
+set.seed(1)
+res <- replicate(20, { y_shuffled <- sample(tb$TB_Status)
+  c(outside = score_cv(X, y_shuffled, FALSE), inside = score_cv(X, y_shuffled, TRUE)) })
+round(rowMeans(res), 2)
+```
+
+## Demonstrating selection bias
+\Large
+With labels that carry **no** information:
+
+* Genes selected **outside** CV: AUC $\approx$ `r round(rowMeans(res)["outside"], 2)`, a "biomarker" out of pure noise
+* Genes selected **inside** CV: AUC $\approx$ `r round(rowMeans(res)["inside"], 2)`, correctly a coin flip
+* With the real labels (inside CV): AUC $\approx$ `r round(score_cv(X, tb$TB_Status, TRUE), 2)`
+
+## Biomarker development: lessons
+\Large
+* Every data-driven step (gene selection, scaling, tuning) goes **inside** the CV loop (caret: `preProcess`, `sbf`, `rfe`)
+* Keep a test set untouched until the model is **locked**
+* Then validate in an **independent cohort** (different site, time, or population)
+* Small studies give noisy estimates: report confidence intervals
+
+## Summary
+\large
 * Training error is optimistic; we need an honest estimate of test error
 * Small $k$ in kNN over-trains; large $k$ over-smooths
 * K-fold CV and the bootstrap estimate test error from the training data
 * Tune parameters by CV; keep the test set for the final check
 * caret's `train` handles resampling and tuning for hundreds of models
+* Biomarkers: put gene selection inside CV, lock the model, then validate in an independent cohort
 
 ## Session Info
 \tiny
