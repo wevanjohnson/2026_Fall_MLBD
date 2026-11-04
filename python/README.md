@@ -10,6 +10,8 @@ This course is taught in R. These notebooks follow the R lectures section by sec
 | 3 | [regularization.ipynb](week3/regularization.ipynb) | `lectures/week3/regularization.Rmd` |
 | 4 | [clustering.ipynb](week4/clustering.ipynb) | `lectures/week4/clustering.Rmd` |
 | 4 | [dimensionReduction.ipynb](week4/dimensionReduction.ipynb) | `lectures/week4/dimensionReduction.Rmd` |
+| 4 | [genomicsApplications.ipynb](week4/genomicsApplications.ipynb) | `lectures/week4/genomicsApplications.Rmd` |
+| 5 | [svm.ipynb](week5/svm.ipynb) | `lectures/week5/svm.Rmd` |
 
 ## Setup
 From the repo root, create a virtual environment and install the requirements:
@@ -26,6 +28,6 @@ macOS doesn't include a bare `pip` command (you'll see `zsh: command not found: 
 Or open a notebook in Google Colab. The notebooks load data from GitHub automatically if `python/data/` isn't found.
 
 ## Data
-`data/` holds CSV exports of the R datasets used in lecture, so R and Python use identical data: `heights` and `mnist_27` (dslabs), `GaltonFamilies` (HistData), `QuickStartExample` and `BinomialExample` (glmnet), batting tables derived from the Lahman package, `TBnanostring` (107 blood genes, active TB vs. latent infection; Kaipilyawar et al. 2022), `nhanes_adults` (adults with complete data from the NHANES package), `movielens_top50` (ratings for the 50 most-rated movies) and `tissue_gene_expression` (dslabs), `faithful` (base R), `bladderbatch_top2000` (the 2,000 most variable genes from the Bioconductor bladderbatch package), and `pbmc68k_reduced` (700 blood cells, log-normalized, from the Scanpy package).
+`data/` holds CSV exports of the R datasets used in lecture, so R and Python use identical data: `heights` and `mnist_27` (dslabs), `GaltonFamilies` (HistData), `QuickStartExample` and `BinomialExample` (glmnet), batting tables derived from the Lahman package, `TBnanostring` (107 blood genes, active TB vs. latent infection; Kaipilyawar et al. 2022), `nhanes_adults` (adults with complete data from the NHANES package), `movielens_top50` (ratings for the 50 most-rated movies) and `tissue_gene_expression` (dslabs), `faithful` (base R), `svm_sim` and `esl_mixture`/`esl_mixture_grid` (SVM examples; the latter from *The Elements of Statistical Learning*), `bladderbatch_top2000` (the 2,000 most variable genes from the Bioconductor bladderbatch package), and `pbmc68k_reduced` (700 blood cells, log-normalized, from the Scanpy package).
 
 Note: Python and R use different random number generators, so splits and some numbers will differ slightly from the R slides.

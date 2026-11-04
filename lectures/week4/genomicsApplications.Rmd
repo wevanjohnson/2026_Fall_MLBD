@@ -1,0 +1,266 @@
+---
+title: "Unsupervised Learning in Genomics: Batch Effects and Single-Cell Data"
+author: |
+  | W. Evan Johnson, Ph.D.
+  | Professor, Division of Infectious Disease
+  | Director, Center for Data Science
+  | Associate Director, Center for Biomedical Informatics and Health AI
+  | Rutgers University -- New Jersey Medical School
+date: "`r Sys.Date()`"
+header-includes:
+  - \usepackage{amsmath}
+  - \usepackage{xcolor}
+  - \setbeamercolor{frametitle}{fg=black}
+  - \usepackage{graphicx}
+  - \usebackgroundtemplate{\includegraphics[width=\paperwidth]{clusterFigs/RH_template_Page_2.png}}
+  - \addtobeamertemplate{frametitle}{\vspace*{.25in}}{\vspace*{.25in}}
+  - \setbeamerfont{frametitle}{size=\huge}
+  - \usepackage{tikz}
+output:
+  beamer_presentation
+classoption: aspectratio=169
+editor_options:
+  chunk_output_type: console
+tables: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(uwot)
+library(dslabs)
+img_path <- "dimRedfigs/"
+```
+
+## Learning objectives
+\Large
+By the end of this lecture you should be able to:
+
+* Use PCA to spot **batch effects**, and correct them with ComBat
+* Explain graph-based clustering (Louvain, Leiden) and modularity
+* Run a basic single-cell workflow: PCA $\rightarrow$ nearest-neighbor graph $\rightarrow$ Leiden $\rightarrow$ UMAP
+* Check clusters against known labels, and know their limits
+
+## Putting the tools to work
+\Large
+This lecture applies the last two lectures to genomics data:
+
+* **Batch effects:** PCA as a diagnostic (bladder cancer microarrays)
+* **Graph-based clustering:** Leiden on the tissue gene expression data
+* **Single-cell RNA-seq:** the full workflow on 700 blood cells
+
+## Batch effects
+\Large
+* **Batch effects:** technical variation from processing date, lab, reagent lot, or platform
+* Often the **largest** source of variation in omics data
+* Can hide biology, or create false findings if confounded with the outcome
+* PCA is the first diagnostic: color the PC plot by batch
+
+## Batch effects: bladder cancer data
+57 bladder samples (normal, cancer, biopsy) processed in 5 batches (`bladderbatch`, Bioconductor):
+\small
+```{r bladder, fig.show='hide'}
+library(bladderbatch); library(sva)
+data(bladderdata)
+e  <- exprs(bladderEset); pd <- pData(bladderEset)
+top <- order(apply(e, 1, var), decreasing = TRUE)[1:2000]
+pc_plot <- function(m, main) {
+  p <- prcomp(t(m[top, ]))
+  data.frame(p$x[, 1:2], batch = factor(pd$batch), cancer = pd$cancer) %>%
+    ggplot(aes(PC1, PC2, color = batch, shape = cancer)) +
+    geom_point(size = 3) + ggtitle(main)
+}
+pc_plot(e, "Before correction")
+```
+
+## Batch effects: bladder cancer data
+```{r bladder-plot, echo=FALSE, out.width="60%", fig.width=6.5, fig.height=4.2, fig.align='center'}
+pc_plot(e, "Before correction")
+```
+
+\Large
+Samples group by batch as much as by cancer status.
+
+## Batch correction with ComBat
+\Large
+**ComBat** (Johnson, Li & Rabinovic, 2007) removes batch-specific location and scale shifts, borrowing strength across genes (empirical Bayes). Protect the biology with `mod`:
+
+\normalsize
+```{r combat, results='hide'}
+mod <- model.matrix(~ cancer, data = pd)
+e_cb <- ComBat(dat = e, batch = pd$batch, mod = mod)
+```
+
+\Large
+For RNA-seq counts, use **ComBat-seq** (`sva::ComBat_seq`).
+
+## Batch correction with ComBat
+```{r combat-plot, echo=FALSE, out.width="85%", fig.width=11, fig.height=4.2, fig.align='center'}
+gridExtra::grid.arrange(pc_plot(e, "Before ComBat"), pc_plot(e_cb, "After ComBat"), ncol = 2)
+```
+
+## Graph-based clustering: modularity
+\large
+Standard for single-cell data (Seurat, Scanpy). Build a **nearest-neighbor graph**, then find communities that maximize **modularity**:
+
+$$
+\mathcal{Q} = \frac{1}{2m} \sum_{i,j} \left[ A_{ij} - \frac{k_i k_j}{2m} \right] \delta(c_i, c_j)
+$$
+
+* $A_{ij}$: edge weight between nodes $i$ and $j$; $m$: total edge weight
+* $k_i$: degree of node $i$; $\delta(c_i, c_j)=1$ if same community
+
+High $\mathcal{Q}$: dense connections within communities, sparse between.
+
+## Louvain and Leiden algorithms
+\Large
+**Louvain** (greedy; repeat until $\mathcal{Q}$ stops improving):
+
+1. **Optimize:** move each node to the neighbor community with the largest gain in $\mathcal{Q}$
+2. **Aggregate:** collapse each community into a single node; repeat
+
+**Leiden** (Traag et al., 2019) adds a refinement step that guarantees connected communities. Now the default in Seurat and Scanpy.
+
+## Graph-based clustering: tissue data
+\large
+We return to the tissue gene expression data from the clustering lecture (189 samples, 500 genes, 7 tissues):
+
+\normalsize
+```{r tissue-setup}
+data("tissue_gene_expression")
+x_tissue <- tissue_gene_expression$x
+xt <- sweep(x_tissue, 2, colMeans(x_tissue))
+```
+
+## Leiden clustering in R
+\small
+```{r leiden}
+library(igraph); library(FNN)
+pcs <- prcomp(xt)$x[, 1:20]                 # work in PC space
+nn  <- get.knn(pcs, k = 10)$nn.index        # 10 nearest neighbors
+g   <- graph_from_edgelist(cbind(rep(1:nrow(pcs), 10), as.vector(nn)),
+                           directed = FALSE) %>% simplify()
+set.seed(1)
+cl  <- membership(cluster_leiden(g, objective_function = "modularity",
+                                 n_iterations = -1))
+```
+
+## Leiden clustering: results
+\scriptsize
+```{r}
+table(cluster = cl, tissue = tissue_gene_expression$y)
+mclust::adjustedRandIndex(cl, tissue_gene_expression$y)
+```
+
+## Leiden clustering: lessons
+\Large
+
+* We never chose $k$: the **resolution** parameter controls how many communities
+* Kidney splits in two, and placenta joins colon: more communities is not always better
+* We use the same approach for single-cell data next
+
+## Putting it together: single-cell RNA-seq
+\Large
+Standard workflow (what Seurat and Scanpy do under the hood):
+
+1. Normalize and log-transform counts; pick highly variable genes
+2. Scale genes; **PCA**; keep the top PCs
+3. Build a **nearest-neighbor graph** in PC space
+4. **Leiden** clustering on the graph
+5. **UMAP** for visualization
+6. Label clusters using marker genes
+
+## Single-cell data: 700 blood cells
+PBMCs from Zheng et al. (2017), 765 highly variable genes, log-normalized (a subset distributed with Scanpy). Each cell also has a FACS-sorted cell-type label:
+\scriptsize
+```{r pbmc}
+pbmc <- read.csv("../../python/data/pbmc68k_reduced.csv", check.names = FALSE)
+cell_type <- pbmc$cell_type
+x_sc <- as.matrix(pbmc[, -1])
+dim(x_sc)
+sort(table(cell_type), decreasing = TRUE)
+```
+
+## Step 2: PCA
+\small
+```{r pbmc-pca, out.width="40%", fig.width=5, fig.height=3, fig.align='center'}
+pc_sc <- prcomp(x_sc, scale. = TRUE, rank. = 30)
+pve <- pc_sc$sdev^2 / sum(pc_sc$sdev^2)
+plot(pve[1:30], type = "b", xlab = "PC", ylab = "Proportion of variance")
+```
+
+\Large
+The scree plot flattens around PC 10-20; we keep 20.
+
+## Steps 3-5: graph, Leiden, UMAP
+\small
+```{r pbmc-cluster}
+library(FNN); library(igraph)
+pcs_sc <- pc_sc$x[, 1:20]
+nn <- get.knn(pcs_sc, k = 15)$nn.index
+g  <- graph_from_edgelist(cbind(rep(1:nrow(pcs_sc), 15), as.vector(nn)),
+                          directed = FALSE) %>% simplify()
+set.seed(1)
+cluster <- factor(membership(cluster_leiden(g, objective_function = "modularity",
+                                            resolution = 1, n_iterations = -1)))
+um_sc <- umap(pcs_sc, n_neighbors = 15)
+table(cluster)
+```
+
+## Single-cell UMAP
+```{r pbmc-umap, echo=FALSE, out.width="95%", fig.width=12, fig.height=4.5, fig.align='center'}
+df_sc <- data.frame(UMAP1 = um_sc[, 1], UMAP2 = um_sc[, 2],
+                    cluster = cluster, cell_type = cell_type)
+gridExtra::grid.arrange(
+  ggplot(df_sc, aes(UMAP1, UMAP2, color = cluster)) + geom_point(size = 0.8) +
+    ggtitle("Leiden clusters"),
+  ggplot(df_sc, aes(UMAP1, UMAP2, color = cell_type)) + geom_point(size = 0.8) +
+    ggtitle("FACS labels"), ncol = 2, widths = c(1, 1.35))
+```
+
+## Clusters vs. cell-type labels
+Labels abbreviated (Mono = CD14+ monocyte, DC = dendritic, nv = naive, mem = memory):
+\scriptsize
+```{r, echo=FALSE}
+short <- c("CD14+ Monocyte" = "Mono", "CD19+ B" = "B", "CD34+" = "CD34",
+  "CD4+/CD25 T Reg" = "Treg", "CD4+/CD45RA+/CD25- Naive T" = "CD4nv",
+  "CD4+/CD45RO+ Memory" = "CD4mem", "CD56+ NK" = "NK",
+  "CD8+ Cytotoxic T" = "CD8", "CD8+/CD45RA+ Naive Cytotoxic" = "CD8nv",
+  "Dendritic" = "DC")
+```
+
+```{r}
+table(cluster, label = short[cell_type])
+```
+\normalsize
+```{r}
+mclust::adjustedRandIndex(cluster, cell_type)
+```
+
+## Single-cell: lessons
+\large
+* Monocytes, B cells, and CD34+ progenitors each map to their own clusters
+* T-cell subtypes overlap: their FACS markers are proteins, and their RNA profiles are similar
+* NK cells and cytotoxic T cells share a cluster (shared cytotoxic genes)
+* "Dendritic" labels are spread across clusters: the bulk FACS labels are noisy
+* Clusters are hypotheses; marker genes and biology confirm them
+
+## Summary
+\large
+* Batch effects can dominate omics data; color PCA plots by batch to find them
+* ComBat removes batch shifts while protecting the biology (`mod`); ComBat-seq for counts
+* Graph-based clustering (Leiden) finds communities in a nearest-neighbor graph; resolution, not $k$, sets the number of clusters
+* Single-cell: PCA $\rightarrow$ kNN graph $\rightarrow$ Leiden $\rightarrow$ UMAP
+* Clusters are hypotheses: check them against labels, marker genes, and biology
+
+## Python companion
+\Large
+Python versions of these examples (`combat`, `igraph`/`leidenalg`, `scanpy`):
+
+`python/week4/genomicsApplications.ipynb`
+
+## Session Info
+\tiny
+```{r session}
+sessionInfo()
+```

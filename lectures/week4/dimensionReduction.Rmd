@@ -39,9 +39,7 @@ By the end of this lecture you should be able to:
 * Explain PCA as a rotation that concentrates variance
 * Choose how many PCs to keep, read loadings, and decide whether to scale
 * Connect PCA, eigendecomposition, and the SVD
-* Use PCA to spot **batch effects**
 * Apply NMF, t-SNE, and UMAP, and know their pitfalls
-* Run a basic single-cell workflow: PCA $\rightarrow$ graph clustering $\rightarrow$ UMAP
 
 ## Dimension reduction
 \Large
@@ -458,56 +456,6 @@ max(abs(abs(p_y$x) - abs(s_c$u %*% diag(s_c$d))))
 ## SVD of gene expression: "eigengenes"
 ![](dimRedfigs/SVD3.jpg)
 
-## Batch effects
-\Large
-* **Batch effects:** technical variation from processing date, lab, reagent lot, or platform
-* Often the **largest** source of variation in omics data
-* Can hide biology, or create false findings if confounded with the outcome
-* PCA is the first diagnostic: color the PC plot by batch
-
-## Batch effects: bladder cancer data
-57 bladder samples (normal, cancer, biopsy) processed in 5 batches (`bladderbatch`, Bioconductor):
-\small
-```{r bladder, fig.show='hide'}
-library(bladderbatch); library(sva)
-data(bladderdata)
-e  <- exprs(bladderEset); pd <- pData(bladderEset)
-top <- order(apply(e, 1, var), decreasing = TRUE)[1:2000]
-pc_plot <- function(m, main) {
-  p <- prcomp(t(m[top, ]))
-  data.frame(p$x[, 1:2], batch = factor(pd$batch), cancer = pd$cancer) %>%
-    ggplot(aes(PC1, PC2, color = batch, shape = cancer)) +
-    geom_point(size = 3) + ggtitle(main)
-}
-pc_plot(e, "Before correction")
-```
-
-## Batch effects: bladder cancer data
-```{r bladder-plot, echo=FALSE, out.width="60%", fig.width=6.5, fig.height=4.2, fig.align='center'}
-pc_plot(e, "Before correction")
-```
-
-\Large
-Samples group by batch as much as by cancer status.
-
-## Batch correction with ComBat
-\Large
-**ComBat** (Johnson, Li & Rabinovic, 2007) removes batch-specific location and scale shifts, borrowing strength across genes (empirical Bayes). Protect the biology with `mod`:
-
-\normalsize
-```{r combat, results='hide'}
-mod <- model.matrix(~ cancer, data = pd)
-e_cb <- ComBat(dat = e, batch = pd$batch, mod = mod)
-```
-
-\Large
-For RNA-seq counts, use **ComBat-seq** (`sva::ComBat_seq`).
-
-## Batch correction with ComBat
-```{r combat-plot, echo=FALSE, out.width="85%", fig.width=11, fig.height=4.2, fig.align='center'}
-gridExtra::grid.arrange(pc_plot(e, "Before ComBat"), pc_plot(e_cb, "After ComBat"), ncol = 2)
-```
-
 ## Non-negative matrix factorization (NMF)
 \Large
 Like SVD, a linear factorization, but **all entries non-negative**:
@@ -689,92 +637,6 @@ Same data, three different pictures. Very small perplexity breaks tissues into f
 * Common practice: run PCA first (e.g., top 20-50 PCs), then t-SNE/UMAP
 * See Chari & Pachter (2023), "The specious art of single-cell genomics"
 
-## Putting it together: single-cell RNA-seq
-\Large
-Standard workflow (what Seurat and Scanpy do under the hood):
-
-1. Normalize and log-transform counts; pick highly variable genes
-2. Scale genes; **PCA**; keep the top PCs
-3. Build a **nearest-neighbor graph** in PC space
-4. **Leiden** clustering on the graph
-5. **UMAP** for visualization
-6. Label clusters using marker genes
-
-## Single-cell data: 700 blood cells
-PBMCs from Zheng et al. (2017), 765 highly variable genes, log-normalized (a subset distributed with Scanpy). Each cell also has a FACS-sorted cell-type label:
-\scriptsize
-```{r pbmc}
-pbmc <- read.csv("../../python/data/pbmc68k_reduced.csv", check.names = FALSE)
-cell_type <- pbmc$cell_type
-x_sc <- as.matrix(pbmc[, -1])
-dim(x_sc)
-sort(table(cell_type), decreasing = TRUE)
-```
-
-## Step 2: PCA
-\small
-```{r pbmc-pca, out.width="40%", fig.width=5, fig.height=3, fig.align='center'}
-pc_sc <- prcomp(x_sc, scale. = TRUE, rank. = 30)
-pve <- pc_sc$sdev^2 / sum(pc_sc$sdev^2)
-plot(pve[1:30], type = "b", xlab = "PC", ylab = "Proportion of variance")
-```
-
-\Large
-The scree plot flattens around PC 10-20; we keep 20.
-
-## Steps 3-5: graph, Leiden, UMAP
-\small
-```{r pbmc-cluster}
-library(FNN); library(igraph)
-pcs_sc <- pc_sc$x[, 1:20]
-nn <- get.knn(pcs_sc, k = 15)$nn.index
-g  <- graph_from_edgelist(cbind(rep(1:nrow(pcs_sc), 15), as.vector(nn)),
-                          directed = FALSE) %>% simplify()
-set.seed(1)
-cluster <- factor(membership(cluster_leiden(g, objective_function = "modularity",
-                                            resolution = 1, n_iterations = -1)))
-um_sc <- umap(pcs_sc, n_neighbors = 15)
-table(cluster)
-```
-
-## Single-cell UMAP
-```{r pbmc-umap, echo=FALSE, out.width="95%", fig.width=12, fig.height=4.5, fig.align='center'}
-df_sc <- data.frame(UMAP1 = um_sc[, 1], UMAP2 = um_sc[, 2],
-                    cluster = cluster, cell_type = cell_type)
-gridExtra::grid.arrange(
-  ggplot(df_sc, aes(UMAP1, UMAP2, color = cluster)) + geom_point(size = 0.8) +
-    ggtitle("Leiden clusters"),
-  ggplot(df_sc, aes(UMAP1, UMAP2, color = cell_type)) + geom_point(size = 0.8) +
-    ggtitle("FACS labels"), ncol = 2, widths = c(1, 1.35))
-```
-
-## Clusters vs. cell-type labels
-Labels abbreviated (Mono = CD14+ monocyte, DC = dendritic, nv = naive, mem = memory):
-\scriptsize
-```{r, echo=FALSE}
-short <- c("CD14+ Monocyte" = "Mono", "CD19+ B" = "B", "CD34+" = "CD34",
-  "CD4+/CD25 T Reg" = "Treg", "CD4+/CD45RA+/CD25- Naive T" = "CD4nv",
-  "CD4+/CD45RO+ Memory" = "CD4mem", "CD56+ NK" = "NK",
-  "CD8+ Cytotoxic T" = "CD8", "CD8+/CD45RA+ Naive Cytotoxic" = "CD8nv",
-  "Dendritic" = "DC")
-```
-
-```{r}
-table(cluster, label = short[cell_type])
-```
-\normalsize
-```{r}
-mclust::adjustedRandIndex(cluster, cell_type)
-```
-
-## Single-cell: lessons
-\large
-* Monocytes, B cells, and CD34+ progenitors each map to their own clusters
-* T-cell subtypes overlap: their FACS markers are proteins, and their RNA profiles are similar
-* NK cells and cytotoxic T cells share a cluster (shared cytotoxic genes)
-* "Dendritic" labels are spread across clusters: the bulk FACS labels are noisy
-* Clusters are hypotheses; marker genes and biology confirm them
-
 ## Comparing methods
 \small
 | Method | Type | Key constraint | Best for |
@@ -790,10 +652,9 @@ mclust::adjustedRandIndex(cluster, cell_type)
 * PCA rotates data so the first few components hold most of the variance
 * Check the scree plot, read the loadings, and decide on scaling
 * PCA = SVD of the centered data
-* PCA is the first check for **batch effects**; ComBat corrects them
 * NMF: additive, interpretable parts for non-negative data
 * t-SNE/UMAP: great pictures of local structure, but don't over-read them
-* Single-cell: PCA $\rightarrow$ kNN graph $\rightarrow$ Leiden $\rightarrow$ UMAP
+* Next: batch effects and single-cell data (genomics applications lecture)
 
 ## Python companion
 \Large

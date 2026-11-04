@@ -1,0 +1,183 @@
+---
+title: "Homework 3"
+author: "Due date: 11/13/26"
+output:
+  html_document:
+    code_folding: show
+    toc: true
+    toc_float: true
+    theme: "flatly"
+editor_options:
+  chunk_output_type: console
+---
+
+### Scoring (100 pts total)
+
+* **Completion (50 pts):** the point values listed with each task below are awarded for completing that task.
+* **Detailed grading (50 pts):** a subset of problems will be selected and graded in detail. These 50 points are divided among the selected problems in proportion to their point values.
+
+### Use of AI Tools
+
+You may use AI tools (e.g., ChatGPT, Claude, Copilot, Gemini) on this assignment, but you must document how you used them. As you work, keep brief notes on which tools you used, what tasks you used them for, and the general way you prompted them — you will need these for the **AI Use Statement** at the end of the assignment. The AI Use Statement is required but not scored; **submissions without it will not be accepted.** Honest disclosure will not lower your grade, and you remain responsible for the correctness of everything you submit.
+
+### The TB NanoString data
+
+In this assignment you will apply unsupervised learning to the TB NanoString data: blood expression of 107 TB-related genes in 179 people with active tuberculosis (TB) or latent TB infection (LTBI) (Kaipilyawar et al., *Clin Infect Dis*, 2022). The first column, `TB_Status`, is the TB status; the remaining columns are gene expression values. You will then build a Shiny app that does dimension reduction and k-means clustering on these data.
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+TBnanostring <- readRDS("TBnanostring.rds")
+dim(TBnanostring)
+table(TBnanostring$TB_Status)
+```
+
+You will need the `umap` (or `uwot`), `NMF`, `cluster`, `mclust`, and `shiny` packages.
+
+### Question 1. Principal Component Analysis (20 pts)
+
+#### Task 1.1: Fit PCA and plot the variance explained (5 pts)
+
+Run PCA on the gene expression columns (`prcomp`). Make a scree plot of the proportion of variance explained by each PC, and report the variance explained by PC1, PC2, and the first 10 PCs together.
+
+```{r pca-fit}
+# TODO: Students write code here
+```
+
+#### Task 1.2: PCA plot (5 pts)
+
+Make a `ggplot2` scatterplot of PC1 vs. PC2 with points colored by `TB_Status`. Do TB and LTBI separate? Try one other pair of PCs (e.g., PC1 vs. PC3): does it separate the groups better?
+
+```{r pca-plot}
+# TODO: Students write code here
+```
+
+#### Task 1.3: Loadings (5 pts)
+
+Which 10 genes have the largest absolute loadings on PC1? Is PC1 related to TB status? (Hint: compare PC1 scores between the two groups with a boxplot or a t-test.)
+
+```{r pca-loadings}
+# TODO: Students write code here
+```
+
+#### Task 1.4: To scale or not to scale (5 pts)
+
+Repeat the PCA with `scale. = TRUE`. How do the variance explained and the PC1 vs. PC2 plot change? Which version would you use for these data, and why?
+
+```{r pca-scaled}
+# TODO: Students write code here
+```
+
+### Question 2. UMAP (15 pts)
+
+#### Task 2.1: UMAP plot (5 pts)
+
+Apply UMAP to the gene expression data (set a seed!) and plot the two UMAP dimensions colored by `TB_Status`.
+
+```{r umap-fit}
+# TODO: Students write code here
+```
+
+#### Task 2.2: Tuning parameters (5 pts)
+
+Rerun UMAP with `n_neighbors` = 5, 15, and 50 (and, optionally, two different seeds). Show the plots side by side. How much do the pictures change?
+
+```{r umap-tune}
+# TODO: Students write code here
+```
+
+#### Task 2.3: PCA vs. UMAP (5 pts)
+
+Compare your PCA and UMAP plots. Which separates TB from LTBI more clearly? What can and can't you conclude from distances between points or clusters in a UMAP plot?
+
+### Question 3. Non-negative Matrix Factorization (15 pts)
+
+#### Task 3.1: Prepare the data (3 pts)
+
+NMF requires non-negative data, but these expression values are centered (some are negative). Shift each gene so its minimum is 0 (subtract each column's minimum). Confirm that the shifted matrix has no negative values.
+
+```{r nmf-prep}
+# TODO: Students write code here
+```
+
+#### Task 3.2: Fit NMF (7 pts)
+
+Fit NMF with rank $K = 2$ (use `nrun` of at least 10 and set a seed). Plot the two columns of the basis matrix $\mathbf{W}$ (`basis()`) against each other, colored by `TB_Status`.
+
+```{r nmf-fit}
+# TODO: Students write code here
+```
+
+#### Task 3.3: Interpret the components (5 pts)
+
+Using the coefficient matrix $\mathbf{H}$ (`coef()`), list the 10 genes that load most heavily on each component. Does either component line up with TB status? How does the NMF picture compare with PCA?
+
+```{r nmf-interpret}
+# TODO: Students write code here
+```
+
+### Question 4. K-means Clustering (10 pts)
+
+#### Task 4.1: Choose k (4 pts)
+
+Run k-means (`nstart = 25`) on the first 10 PCs from Question 1 for $k = 1, \ldots, 10$. Make an elbow plot and a mean silhouette plot (`cluster::silhouette`). Which $k$ would you choose?
+
+```{r kmeans-k}
+# TODO: Students write code here
+```
+
+#### Task 4.2: Clusters vs. TB status (6 pts)
+
+Run k-means with $k = 2$ on (a) all 107 genes, (b) the first 10 PCs, and (c) the 2 UMAP dimensions. For each, cross-tabulate the clusters with `TB_Status` and compute the adjusted Rand index (`mclust::adjustedRandIndex`). Which representation gives clusters closest to TB status? Does that mean it is the "best" representation? Explain.
+
+```{r kmeans-compare}
+# TODO: Students write code here
+```
+
+### Question 5. A Shiny App for Dimension Reduction and K-means (40 pts)
+
+#### Task 5.1: Walk through the k-means Shiny tutorial (10 pts)
+
+Work step by step through the k-means Shiny app tutorial, `lectures/week4/shiny_kmeans_app.html` (Steps 00-09). Run the code to launch the app at each step. For each step, briefly document what changed: which functions were added and what they do in the app.
+
+*Your answer here.*
+
+#### Task 5.2: Add dimension reduction and k-means on the TB data (25 pts)
+
+Modify the final tutorial app so that it works on the TB NanoString data:
+
+1. **Dimension reduction input:** a menu to choose the method: PCA, UMAP, or NMF (rank 2).
+2. **Clustering input:** the number of clusters $k$ (as in the tutorial).
+3. **Plot:** the two reduced dimensions, with points **colored by k-means cluster** and **shaped by TB status**; include the cluster centers.
+4. **Table:** a cross-tabulation of clusters vs. TB status, and the adjusted Rand index.
+
+Tips: compute the dimension reductions once, outside the `server` function or in a `reactive()`, so the app doesn't recompute UMAP or NMF every time $k$ changes. Run k-means on the two reduced dimensions.
+
+Include your app code below (with `eval=FALSE`) and save it as `app.R`. Add 2-3 screenshots of the running app, and briefly describe what you see for each method.
+
+```{r shiny-app, eval=FALSE}
+# TODO: Students write app code here
+```
+
+#### Task 5.3: Post your app on GitHub (5 pts)
+
+Create a GitHub repository containing your `app.R`, the data file it needs, and a short `README.md` explaining how to run the app. Add a hyperlink to your repository here.
+
+*Your link here.*
+
+(Later in the course we will add machine learning models to this app.)
+
+### Deliverables
+
+Submit:
+
+* Completed `.Rmd` file and rendered HTML report
+* All code blocks filled in (`# TODO` replaced)
+* Written answers for the interpretation tasks
+* Screenshots of your Shiny app and a link to its GitHub repository
+* The AI Use Statement below
+
+### AI Use Statement (required — not scored, but submissions without it will not be accepted)
+
+Describe in detail how you used AI tools on this assignment. If you did not use any, state that explicitly. Please include the tools you used, the tasks you used them for, and the general way you prompted them.
+
+*Your answer here.*
