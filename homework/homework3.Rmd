@@ -1,6 +1,6 @@
 ---
 title: "Homework 3"
-author: "Due date: 11/13/26"
+author: "Due date: 11/20/26"
 output:
   html_document:
     code_folding: show
@@ -152,11 +152,19 @@ Modify the final tutorial app so that it works on the TB NanoString data:
 
 Tips: compute the dimension reductions once, outside the `server` function or in a `reactive()`, so the app doesn't recompute UMAP or NMF every time $k$ changes. Run k-means on the two reduced dimensions.
 
-Include your app code below (with `eval=FALSE`) and save it as `app.R`. Add 2-3 screenshots of the running app, and briefly describe what you see for each method.
+Include your app code below (with `eval=FALSE`) and save it as `app.R`.
 
 ```{r shiny-app, eval=FALSE}
 # TODO: Students write app code here
 ```
+
+**Screenshots (required):** we will grade your app from screenshots, not by running it. Take **three** screenshots of your running app, one each for PCA, UMAP, and NMF, each showing the plot and the cluster vs. TB status table. Save them in your homework folder and embed them in this report, for example:
+
+```{r screenshots, eval=FALSE}
+knitr::include_graphics(c("app_pca.png", "app_umap.png", "app_nmf.png"))
+```
+
+Below the screenshots, briefly describe what you see for each method.
 
 #### Task 5.3: Post your app on GitHub (5 pts)
 
@@ -173,7 +181,8 @@ Submit:
 * Completed `.Rmd` file and rendered HTML report
 * All code blocks filled in (`# TODO` replaced)
 * Written answers for the interpretation tasks
-* Screenshots of your Shiny app and a link to its GitHub repository
+* Three screenshots of your running Shiny app (PCA, UMAP, NMF) embedded in the report
+* A link to your app's GitHub repository
 * The AI Use Statement below
 
 ### AI Use Statement (required — not scored, but submissions without it will not be accepted)

@@ -1,0 +1,173 @@
+---
+title: "Homework 4"
+author: "Due date: 11/30/26"
+output:
+  html_document:
+    code_folding: show
+    toc: true
+    toc_float: true
+    theme: "flatly"
+editor_options:
+  chunk_output_type: console
+---
+
+### Scoring (100 pts total)
+
+* **Completion (50 pts):** the point values listed with each task below are awarded for completing that task.
+* **Detailed grading (50 pts):** a subset of problems will be selected and graded in detail. These 50 points are divided among the selected problems in proportion to their point values.
+
+### Use of AI Tools
+
+You may use AI tools (e.g., ChatGPT, Claude, Copilot, Gemini) on this assignment, but you must document how you used them. As you work, keep brief notes on which tools you used, what tasks you used them for, and the general way you prompted them — you will need these for the **AI Use Statement** at the end of the assignment. The AI Use Statement is required but not scored; **submissions without it will not be accepted.** Honest disclosure will not lower your grade, and you remain responsible for the correctness of everything you submit.
+
+### The TB NanoString data
+
+In this assignment you will build and compare classifiers for tuberculosis using the TB NanoString data: blood expression of 107 TB-related genes in 179 people with active TB or latent TB infection (LTBI). The first column, `TB_Status`, is the outcome; the remaining columns are gene expression values.
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(caret)
+TBnanostring <- readRDS("TBnanostring.rds")
+TBnanostring$TB_Status <- factor(TBnanostring$TB_Status, levels = c("LTBI", "TB"))
+dim(TBnanostring)
+table(TBnanostring$TB_Status)
+```
+
+You will need the `caret`, `kernlab`, `randomForest` (or `ranger`), `xgboost`, `pROC`, and `iml` (or `shapviz` and `lime`) packages.
+
+### Question 1. Set up (5 pts)
+
+Split the data into 70% training and 30% test sets, stratified by `TB_Status` (`createDataPartition`; set a seed). Set up 10-fold cross-validation that reports ROC/AUC (`trainControl` with `classProbs = TRUE` and `summaryFunction = twoClassSummary`). Use the **same** split and CV setup for every model below, and only use the test set for final evaluation.
+
+```{r setup-split}
+# TODO: Students write code here
+```
+
+### Question 2. Support Vector Machines (20 pts)
+
+#### Task 2.1: Linear and radial SVMs (12 pts)
+
+1. Fit a linear SVM (`method = "svmLinear"`), tuning the cost $C$ over a grid.
+2. Fit a radial SVM (`method = "svmRadial"`), tuning $C$ and $\sigma$.
+3. Center and scale the genes inside cross-validation (`preProcess`).
+4. Plot the CV AUC across the tuning parameters for each model.
+
+```{r svm-fit}
+# TODO: Students write code here
+```
+
+#### Task 2.2: Evaluate on the test set (8 pts)
+
+For each SVM, report the test-set confusion matrix, accuracy, sensitivity, specificity, and AUC (treat TB as the positive class). Which kernel works better here, and why might that be?
+
+```{r svm-eval}
+# TODO: Students write code here
+```
+
+### Question 3. Random Forest (20 pts)
+
+#### Task 3.1: Fit and tune (8 pts)
+
+Fit a random forest (`method = "rf"` or `"ranger"`), tuning `mtry` (the number of genes tried at each split). Plot the CV AUC against `mtry`.
+
+```{r rf-fit}
+# TODO: Students write code here
+```
+
+#### Task 3.2: Evaluate (6 pts)
+
+Report the test-set confusion matrix, accuracy, sensitivity, specificity, and AUC.
+
+```{r rf-eval}
+# TODO: Students write code here
+```
+
+#### Task 3.3: Variable importance (6 pts)
+
+Plot the 20 most important genes (`varImp`). Which genes appear most predictive? Do they include the genes in the Sweeney 3-gene signature from lecture (GBP5, DUSP3, KLF2)?
+
+```{r rf-importance}
+# TODO: Students write code here
+```
+
+### Question 4. Gradient Boosting with XGBoost (20 pts)
+
+#### Task 4.1: Fit and tune (10 pts)
+
+Fit an XGBoost classifier (`method = "xgbTree"` in caret, or the `xgboost` package directly with `objective = "binary:logistic"`). Tune at least three hyperparameters (e.g., `max_depth`, `eta`, `nrounds`, `subsample`) by cross-validation, and report the best settings.
+
+```{r xgb-fit}
+# TODO: Students write code here
+```
+
+#### Task 4.2: Evaluate and interpret (10 pts)
+
+Report the test-set confusion matrix, accuracy, sensitivity, specificity, and AUC. Plot the XGBoost feature importance for the top 20 genes, and compare it with the random forest importance from Task 3.3.
+
+```{r xgb-eval}
+# TODO: Students write code here
+```
+
+### Question 5. Explainability: SHAP and LIME (15 pts)
+
+Use your random forest or XGBoost model.
+
+#### Task 5.1: SHAP values (10 pts)
+
+1. Compute SHAP values (`iml::Shapley` or `shapviz`).
+2. Make a SHAP summary (beeswarm) plot.
+3. Make a SHAP dependence plot for the top gene.
+4. Interpret: which genes push predictions toward TB, and which toward LTBI?
+
+```{r shap}
+# TODO: Students write code here
+```
+
+#### Task 5.2: LIME (5 pts)
+
+Choose 3 test-set individuals (at least one TB and one LTBI) and explain each prediction with LIME (`lime` or `iml::LocalModel`). Include at least one explanation plot or table. Do the explanations make biological sense?
+
+```{r lime}
+# TODO: Students write code here
+```
+
+### Question 6. Model Comparison (20 pts)
+
+#### Task 6.1: Comparison table and ROC curves (10 pts)
+
+Fill in the table below with test-set results, and plot the test-set ROC curves for all four models on one graph.
+
+| Model          | Accuracy | Sensitivity | Specificity | AUC  | Notes |
+|----------------|----------|-------------|-------------|------|-------|
+| Linear SVM     | TODO     | TODO        | TODO        | TODO | TODO  |
+| Radial SVM     | TODO     | TODO        | TODO        | TODO | TODO  |
+| Random forest  | TODO     | TODO        | TODO        | TODO | TODO  |
+| XGBoost        | TODO     | TODO        | TODO        | TODO | TODO  |
+
+```{r compare-roc}
+# TODO: Students write code here
+```
+
+#### Task 6.2: Discussion (10 pts)
+
+Write a short paragraph answering:
+
+* Which model performed best? With only `r round(0.3 * nrow(TBnanostring))` test samples, are the differences between models meaningful? (Hint: look at the confidence intervals, e.g., `pROC::ci.auc`.)
+* Do the most important genes agree across the random forest, XGBoost, and SHAP results?
+* Which model would you choose for a TB triage test (WHO target: sensitivity $\ge$ 90%, specificity $\ge$ 70%), and why? Consider accuracy, interpretability, and how the cutoff would be chosen.
+
+### Deliverables
+
+Submit:
+
+* Completed `.Rmd` file and rendered HTML report
+* All code blocks filled in (`# TODO` replaced)
+* All plots (CV tuning curves, confusion matrices, ROC curves, variable importance, SHAP, LIME)
+* Written answers for the interpretation tasks
+* The AI Use Statement below
+
+### AI Use Statement (required — not scored, but submissions without it will not be accepted)
+
+Describe in detail how you used AI tools on this assignment. If you did not use any, state that explicitly. Please include the tools you used, the tasks you used them for, and the general way you prompted them.
+
+*Your answer here.*

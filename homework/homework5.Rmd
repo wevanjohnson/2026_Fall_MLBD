@@ -1,0 +1,121 @@
+---
+title: "Homework 5"
+author: "Due date: 12/11/26"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: "flatly"
+editor_options:
+  chunk_output_type: console
+---
+
+### Scoring (100 pts total)
+
+* **Completion (50 pts):** the point values listed with each task below are awarded for completing that task.
+* **Detailed grading (50 pts):** a subset of problems will be selected and graded in detail. These 50 points are divided among the selected problems in proportion to their point values.
+
+### Use of AI Tools
+
+You may use AI tools (e.g., ChatGPT, Claude, Copilot, Gemini) on this assignment, but you must document how you used them. As you work, keep brief notes on which tools you used, what tasks you used them for, and the general way you prompted them — you will need these for the **AI Use Statement** at the end of the assignment. The AI Use Statement is required but not scored; **submissions without it will not be accepted.** Honest disclosure will not lower your grade, and you remain responsible for the correctness of everything you submit.
+
+### Overview: Get to Know a Modern AI Tool
+
+In this assignment you will pick one modern AI tool, learn how it works, teach others to use it, apply it to something related to your own work, and think critically about how it should and shouldn't be used. Your deliverables are this report and a short tutorial posted on GitHub.
+
+### Question 1. Choose a Tool (5 pts)
+
+Choose **one** modern AI tool. Some ideas:
+
+* **Large language models and assistants:** Claude, ChatGPT, Gemini, Llama, or an open model run locally
+* **Coding assistants and agents:** Claude Code, GitHub Copilot, Cursor
+* **Research and literature tools:** NotebookLM, Elicit, Perplexity, Semantic Scholar
+* **Biomedical foundation models:** AlphaFold, ESM, scGPT, Geneformer, BioBERT/PubMedBERT
+* **Imaging and other modalities:** Segment Anything (SAM) or MedSAM, Whisper (speech to text), image generators
+* **Other:** an agent framework, a retrieval-augmented generation (RAG) pipeline, or another tool you clear with Dr. Johnson
+
+Name your tool, its developer, the version you used, and how you accessed it (web app, API, R/Python package, local install). Briefly explain why you chose it.
+
+*Your answer here.*
+
+### Question 2. How It Works (20 pts)
+
+Explain how your tool works at the level of this course, in about one to two pages. Cover:
+
+* **Model type and architecture** (e.g., transformer, diffusion model, protein language model), in plain language
+* **Training data:** what it was trained on and how much is publicly known
+* **Inputs and outputs:** what it takes in and what it produces
+* **Strengths and known limitations** (e.g., hallucination, context limits, domains where it performs poorly)
+* **Access and cost:** open vs. proprietary, licensing, compute needs, pricing
+
+Cite at least **two** sources (papers, model cards, or technical documentation).
+
+*Your answer here.*
+
+### Question 3. Write a Tutorial and Post It on GitHub (25 pts)
+
+Create a public GitHub repository with a **tutorial** that teaches a classmate to use your tool. The `README.md` (or an R Markdown/Quarto/Jupyter page linked from it) should include:
+
+* **Setup:** how to get access or install it, including any accounts, API keys, or packages (never post your own API keys)
+* **A step-by-step worked example** a classmate can reproduce: the exact code or prompts, with screenshots or output at each step
+* **Tips and pitfalls:** what you learned the hard way
+* **References:** links to the official documentation
+
+Add a hyperlink to your repository here.
+
+*Your link here.*
+
+### Question 4. Apply It to Your Own Work (25 pts)
+
+Use your tool for something interesting related to your research or professional interests (e.g., summarizing literature for a project, writing and debugging analysis code, annotating cell types, predicting a protein structure, segmenting images, drafting a data management plan). Describe:
+
+* **The task:** what you asked the tool to do and why it matters to you
+* **The process:** your inputs (code, prompts, data) and the tool's outputs; include key prompts and results
+* **Verification:** how you checked whether the output was correct (e.g., comparison with a known answer, manual review, running the code, checking citations against the actual papers)
+* **Assessment:** what worked, what failed, and whether you'd use it again for this task
+
+**Important:** do not put protected health information (PHI), unpublished confidential data, or anything your PI or institution hasn't approved into a third-party AI tool. If your real data can't be shared, use public or simulated data.
+
+*Your answer here.*
+
+### Question 5. Proper Use (10 pts)
+
+Based on your experience and reading, describe **good practices** for using this tool responsibly in biomedical research. Consider:
+
+* Verifying outputs and avoiding over-reliance
+* Privacy and data security (HIPAA, IRB approvals, institutional and journal policies)
+* Transparency: disclosing AI use in papers, grants, and coursework
+* Reproducibility: recording versions, settings, and prompts
+* Bias and fairness: who might the tool work poorly for?
+
+*Your answer here.*
+
+### Question 6. Risks and Misuse (15 pts)
+
+Describe how this tool, or tools like it, could be **misused** or cause harm, and what safeguards exist or are needed. Discuss at least **three** concrete risks. Examples:
+
+* Fabricated results or citations presented as real
+* Leaks of patient or confidential data
+* Biased predictions that harm specific populations
+* Over-trust in AI recommendations in clinical decisions
+* Plagiarism or academic misconduct
+* Deepfakes and health misinformation
+* Dual-use concerns (e.g., capabilities that could aid harmful biological research)
+
+Keep this discussion at a conceptual level: describe risks and safeguards, but do **not** attempt to demonstrate misuse or bypass a tool's safety features.
+
+*Your answer here.*
+
+### Deliverables
+
+Submit:
+
+* Completed `.Rmd` file and rendered HTML report
+* A link to your public GitHub tutorial repository
+* The AI Use Statement below
+
+### AI Use Statement (required — not scored, but submissions without it will not be accepted)
+
+Describe in detail how you used AI tools on this assignment. If you did not use any, state that explicitly. Please include the tools you used, the tasks you used them for, and the general way you prompted them. (For this assignment, describe AI use **beyond** your use of the tool you're reporting on, e.g., help with writing or code.)
+
+*Your answer here.*

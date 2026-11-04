@@ -88,7 +88,9 @@ This course is being taught through a synchronous remote modality through Zoom. 
 |October 14 (Wednesday): | First day of class | 
 |November 16 & 18 (Mon, Wed): | Pre-recorded lectures (Dr. Johnson traveling; no live session) |
 |November 26-27 (Thu-Fri):| Thanksgiving Break (no Mon/Wed classes affected) | 
+|December 13 (Sunday): | Final project videos due (11:59 PM) |
 |December 16 (Wednesday): | Last day of class  | 
+|December 18 (Friday): | Final project reports and peer reviews due (11:59 PM) |
 
 ## WORKLOAD:
 This is a 2.0 credit class in the Fall 2 session. In general, you should expect four hours of in class each week, and two hours outside of class for every hour in class.
@@ -106,6 +108,19 @@ You are expected to have read and follow the guidelines at the university’s ac
 
 Violations of academic integrity will be treated in accordance with university policy, and sanctions for violations may range from no credit for the assignment, to a failing course grade to (for the most severe violations) dismissal from the university.
 
+
+## HOMEWORK AND DUE DATES
+Homework is due at 11:59 PM on the dates below; submit on Canvas.
+
+| Assignment | Topic | Due |
+|:---|:---|:---|
+| [Homework 1](homework/homework1.Rmd) | Model training with `caret`; the bootstrap | Friday, October 30 |
+| [Homework 2](homework/homework2.Rmd) | Regularization (ridge, lasso, elastic net) | Monday, November 9 |
+| [Homework 3](homework/homework3.Rmd) | Dimension reduction (PCA, UMAP, NMF), k-means, and a Shiny app (TB NanoString) | Friday, November 20 |
+| [Homework 4](homework/homework4.Rmd) | SVMs, random forests, XGBoost, and SHAP/LIME (TB NanoString) | Monday, November 30 |
+| [Homework 5](homework/homework5.Rmd) | Report and GitHub tutorial on a modern AI tool | Friday, December 11 |
+| [Final project](homework/final_project.Rmd) | Machine learning analysis of a biomedical dataset: video | Sunday, December 13 |
+| | Final report and peer reviews | Friday, December 18 |
 
 ## COURSE TOPICS AND OUTLINE (BY WEEK)
 The course will be conducted two days per week (Mondays and Wednesdays), two hours each. Tentative course start date is October 14, 2026, and the end date will be December 16, 2026.

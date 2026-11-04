@@ -1,0 +1,112 @@
+---
+title: "Final Project: Machine Learning Analysis of a Biomedical Dataset"
+author: "GSND 5355Q, MLBD -- 150 Points Total"
+date: "Video: 11:59 PM Sunday, December 13, 2026; Final report and peer reviews: 11:59 PM Friday, December 18, 2026"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: "flatly"
+editor_options:
+  chunk_output_type: console
+---
+
+## Objective
+
+Take a biomedical dataset of your choice from raw data to interpretation using the machine learning methods from this course. This is a small but **complete** analysis: a clear question, careful data preparation, honest model evaluation, and an interpretation a scientist or clinician could act on. You will present your project in a recorded video and give constructive feedback on your classmates' projects.
+
+## Important Dates
+
+| What | Due |
+|----|----|
+| Video posted to the Canvas Discussions section | **11:59 PM, Sunday, December 13, 2026** |
+| Final report (`.Rmd` + rendered HTML), including your peer reviews | **11:59 PM, Friday, December 18, 2026** |
+
+Post your video before our December 14 class so classmates can watch and review it. We will discuss the projects in class on December 14 and 16.
+
+## 1. Pick a Dataset and a Question
+
+Choose a dataset with enough observations for a train/test split (as a rough guide, at least 100) and a question that machine learning can address: **prediction** (e.g., diagnosis, risk, response to treatment) and/or **discovery** (e.g., subtypes, structure, biomarkers).
+
+Where to find data:
+
+* **Your own research**, with your PI's permission. Use only **de-identified** data: no names, dates of birth, medical record numbers, or other protected health information.
+* **Public repositories:** GEO, SRA, TCGA, GTEx, ImmPort, NHANES, the UCI Machine Learning Repository, Kaggle, PhysioNet (credentialed access), etc.
+* **Course datasets** (TB NanoString, NHANES, tissue gene expression, bladder batch, PBMC single-cell). You may **not** repeat an analysis we did in class or in homework; pick a new question, a new outcome, or new methods.
+
+If you are unsure whether your dataset or question is appropriate, email Dr. Johnson **early**.
+
+## 2. R Markdown Report (60 points)
+
+Submit an `.Rmd` (and the rendered HTML) that walks the reader through your analysis from start to finish. Include:
+
+* **Background and question (5 pts):** one or two paragraphs on the dataset, the scientific or clinical question, and why it matters. State your outcome and what a useful result would look like (e.g., "an AUC above 0.8 using routine lab values").
+* **Data description and preparation (10 pts):** where the data came from (accession, URL, or DOI, plus download code); number of observations and features; outcome distribution; missing data and how you handled it; transformations, scaling, filtering, and batch correction as appropriate.
+* **Methods (25 pts):** apply **at least four** methods from the course, including **at least one unsupervised** method (e.g., PCA, UMAP, clustering, NMF) and **at least one supervised** method (e.g., penalized regression, SVM, random forest, gradient boosting, neural network). For each method, briefly explain why it fits your question, then show the code, results, and a short interpretation. For supervised models:
+  * Hold out a **test set** and use **cross-validation** on the training data to tune parameters.
+  * Keep every data-driven step (feature selection, scaling, imputation) **inside** cross-validation to avoid leakage.
+  * Compare against a **simple baseline** (e.g., logistic regression on a few known predictors, or always predicting the majority class).
+  * Choose and justify an evaluation metric (accuracy, sensitivity and specificity, AUC, RMSE, ...) that fits the question.
+* **Visualizations (10 pts):** at least three informative, well-labeled figures (e.g., PCA/UMAP plots, heatmaps, ROC curves, variable importance, SHAP plots), each with a caption or short explanation. At least one should be publication quality and support your main finding.
+* **Summary and conclusions (10 pts):** two or three paragraphs: what you found, which methods worked best and why, how confident you are (test-set size, confidence intervals), limitations (sample size, confounding, generalizability), and reasonable next steps. Cite at least one relevant paper.
+
+Also include, for reproducibility: `set.seed()` before anything random, all code in the `.Rmd`, links to the data, and `sessionInfo()` at the end.
+
+Your report must end with a **Peer Reviews** section (Part 4) and an **AI Use Statement** (see "Use of AI Tools" below).
+
+## 3. Video Presentation (40 points)
+
+Record a **5-7 minute video** (e.g., a Zoom recording of you sharing your screen) walking through your project. Cover:
+
+* The dataset and your question.
+* Your pipeline: data → preparation → methods → evaluation.
+* Your main finding and one figure that shows it.
+* Limitations and next steps.
+
+Post the video in the **Canvas Discussions** section by **11:59 PM, Sunday, December 13, 2026**.
+
+## 4. Peer Review (50 points)
+
+Watch at least **five** of your classmates' videos. For each, write:
+
+* One specific **strength** of the analysis.
+* One concrete **suggestion**: an alternative method, a validation step, a confounder to check, a better metric, or a follow-up question.
+
+Add a **Peer Reviews** section at the end of your report listing the videos you watched and your comments. Be respectful and constructive: the goal is to learn from each other.
+
+## Use of AI Tools
+
+You may use AI tools (e.g., ChatGPT, Claude, Copilot, Gemini) on this project, but you must document how you used them. As you work, keep brief notes on which tools you used, what tasks you used them for, and the general way you prompted them. End your report with an **AI Use Statement**: describe in detail how you used AI tools (or state that you did not), including the tools, the tasks, and the general way you prompted them. The AI Use Statement is required but not scored; **reports without it will not be accepted.** Honest disclosure will not lower your grade, and you remain responsible for, and must be able to explain, every line of code and every conclusion.
+
+## Grading Breakdown
+
+| Category | Points |
+|----|----|
+| R Markdown report: background and question | 5 |
+| R Markdown report: data description and preparation | 10 |
+| R Markdown report: methods (≥ 4, ≥ 1 unsupervised, ≥ 1 supervised; honest evaluation) | 25 |
+| R Markdown report: visualizations | 10 |
+| R Markdown report: summary and conclusions | 10 |
+| Video presentation | 40 |
+| Peer review of five classmates' videos | 50 |
+| AI Use Statement (required, not scored; reports without it will not be accepted) | -- |
+| **Total** | **150** |
+
+## Additional Notes
+
+* This is an **analysis** project, not just a plotting project: your report must include honest, held-out evaluation of at least one predictive model.
+* You may reuse code from lectures and homework, but the question and analysis must be your own.
+* A careful analysis with a modest result is better than an impressive result from a leaky or overfit model.
+* Python is welcome for parts of the analysis (e.g., in a Quarto document or a linked notebook), but the report must still render to a single HTML file.
+
+## AI Use Statement (copy this section to the end of your report)
+
+### AI Use Statement (required — not scored, but reports without it will not be accepted)
+
+Describe in detail how you used AI tools on this project. If you did not use any, state that explicitly. Please include the tools you used, the tasks you used them for, and the general way you prompted them.
+
+*Your answer here.*
+
+---
+
+*Happy analyzing!*
