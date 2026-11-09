@@ -96,6 +96,8 @@ Plot the 20 most important genes (`varImp`). Which genes appear most predictive?
 
 Fit an XGBoost classifier (`method = "xgbTree"` in caret, or the `xgboost` package directly with `objective = "binary:logistic"`). Tune at least three hyperparameters (e.g., `max_depth`, `eta`, `nrounds`, `subsample`) by cross-validation, and report the best settings.
 
+*Note:* caret's `xgbTree` currently fails with xgboost version 3.0 or later (check `packageVersion("xgboost")`). If so, use `xgb.cv` directly as in the gradient boosting lecture (`lectures/week6/gradientBoost.Rmd`), with `eval_metric = "auc"`.
+
 ```{r xgb-fit}
 # TODO: Students write code here
 ```

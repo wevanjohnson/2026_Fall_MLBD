@@ -163,6 +163,7 @@ Trees and ensemble methods (Nov 16, 18, 23)
 * Regression/decision trees
 * Random forests
 * Gradient boosting (GBM, XGBoost)
+* Explainable AI: variable importance, SHAP, and LIME
 * Application: genome variation analysis
 * Nov 16 and 18: pre-recorded lectures (no live session)
 

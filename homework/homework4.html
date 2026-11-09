@@ -1736,6 +1736,12 @@ or the <code>xgboost</code> package directly with
 hyperparameters (e.g., <code>max_depth</code>, <code>eta</code>,
 <code>nrounds</code>, <code>subsample</code>) by cross-validation, and
 report the best settings.</p>
+<p><em>Note:</em> caret’s <code>xgbTree</code> currently fails with
+xgboost version 3.0 or later (check
+<code>packageVersion(&quot;xgboost&quot;)</code>). If so, use <code>xgb.cv</code>
+directly as in the gradient boosting lecture
+(<code>lectures/week6/gradientBoost.Rmd</code>), with
+<code>eval_metric = &quot;auc&quot;</code>.</p>
 <pre class="r"><code># TODO: Students write code here</code></pre>
 </div>
 <div id="task-4.2-evaluate-and-interpret-10-pts" class="section level4">

@@ -1,0 +1,336 @@
+---
+title: "Explainable AI: Variable Importance, SHAP, and LIME"
+author: |
+  | W. Evan Johnson, Ph.D.
+  | Professor, Division of Infectious Disease
+  | Director, Center for Data Science
+  | Associate Director, Center for Biomedical Informatics and Health AI
+  | Rutgers University -- New Jersey Medical School
+date: "`r Sys.Date()`"
+header-includes:
+  - \usepackage{amsmath}
+  - \usepackage{xcolor}
+  - \setbeamercolor{frametitle}{fg=black}
+  - \usepackage{graphicx}
+  - \usebackgroundtemplate{\includegraphics[width=\paperwidth]{xaiFigs/RH_template_Page_2.png}}
+  - \addtobeamertemplate{frametitle}{\vspace*{.25in}}{\vspace*{.25in}}
+  - \setbeamerfont{frametitle}{size=\huge}
+  - \usepackage{tikz}
+output:
+  beamer_presentation
+classoption: aspectratio=169
+editor_options:
+  chunk_output_type: console
+tables: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center", message = FALSE, warning = FALSE)
+library(caret)
+library(tidyverse)
+library(NHANES)
+library(xgboost)
+library(pROC)
+library(lime)
+library(ggbeeswarm)
+```
+
+## Learning objectives
+\Large
+By the end of this lecture you should be able to:
+
+* Explain why we need to explain "black-box" models
+* Distinguish global from local, and model-specific from model-agnostic explanations
+* Compute and interpret permutation importance
+* Compute SHAP values for a tree model and read summary, dependence, and individual plots
+* Explain a single prediction with LIME, and know the limits of both
+
+## Why explain a model?
+\Large
+- **Trust:** clinicians won't act on a score they can't question
+- **Debugging:** is the model using signal, or a **shortcut**?
+- **Discovery:** which genes or risk factors drive the prediction?
+- **Accountability:** regulators and patients increasingly expect reasons
+
+\vspace{0.2cm}
+\normalsize
+Shortcut example: pneumonia models trained on chest X-rays partly learned *which hospital* an image came from (Zech et al., *PLOS Medicine* 2018).
+
+## Kinds of explanations
+\Large
+- **Intrinsically interpretable** models: linear/logistic regression, a small tree
+- **Post hoc** explanations of a black box (forest, boosting, neural net):
+    - **Global:** how does the model behave overall? (importance, dependence)
+    - **Local:** why did *this* patient get *this* prediction? (SHAP, LIME)
+- **Model-specific** (uses the model's internals) vs. **model-agnostic** (only needs predictions)
+
+## Running example: diabetes in NHANES
+\Large
+Back to the NHANES adults from the regularization lecture: predict **diabetes** from age, BMI, blood pressure, cholesterol, and lifestyle. Ordinal factors are coded as numbers (e.g., `HealthGen`: 1 = Excellent, \ldots, 5 = Poor).
+
+\vspace{0.2cm}
+This time, with **XGBoost**: accurate, but not interpretable on its own.
+
+## Running example: the data
+\footnotesize
+```{r nhanes-data}
+d <- NHANES %>% filter(Age >= 20) %>% distinct(ID, .keep_all = TRUE) %>%
+  select(Diabetes, Age, Gender, Education, Poverty, BMI, Weight, Height,
+         Pulse, BPSysAve, BPDiaAve, TotChol, DirectChol, SleepHrsNight,
+         PhysActive, Smoke100, HealthGen) %>%
+  drop_na() %>%
+  mutate(across(c(Education, HealthGen), as.numeric),   # ordinal -> 1, 2, ...
+         Male = as.numeric(Gender == "male"),
+         PhysActive = as.numeric(PhysActive == "Yes"),
+         Smoke100 = as.numeric(Smoke100 == "Yes")) %>%
+  select(-Gender)
+X <- as.matrix(select(d, -Diabetes))
+y <- as.numeric(d$Diabetes == "Yes")
+dim(X); mean(y)
+```
+
+## Running example: XGBoost model
+Train/test split; number of rounds by 5-fold CV with early stopping:
+
+\footnotesize
+```{r xgb-fit}
+set.seed(1)
+idx <- createDataPartition(d$Diabetes, p = 0.7, list = FALSE)
+X_train <- X[idx, ];  y_train <- y[idx]
+X_test  <- X[-idx, ]; y_test  <- y[-idx]
+dtrain  <- xgb.DMatrix(X_train, label = y_train)
+params  <- list(objective = "binary:logistic", eval_metric = "auc", eta = 0.05,
+                max_depth = 3, subsample = 0.8, colsample_bytree = 0.8)
+cv <- xgb.cv(params = params, data = dtrain, nrounds = 1000, nfold = 5,
+             early_stopping_rounds = 30, verbose = 0)
+best_n  <- which.max(cv$evaluation_log$test_auc_mean)
+xgb_fit <- xgb.train(params = params, data = dtrain, nrounds = best_n)
+p_test  <- predict(xgb_fit, X_test)
+auc(y_test, p_test, quiet = TRUE)
+```
+
+# Global explanations
+
+## Built-in importance (model-specific)
+\small
+XGBoost's **gain**: total improvement in the loss from splits on each feature:
+
+```{r xgb-importance, out.width="50%", fig.height=4, fig.width=6}
+imp <- xgb.importance(model = xgb_fit)
+xgb.plot.importance(imp, top_n = 10)
+```
+
+## Permutation importance (model-agnostic)
+\Large
+**Idea:** shuffle one feature in the **test set**, breaking its link to the outcome. How much worse does the model get?
+
+- Big drop $\rightarrow$ the model relies on that feature
+- Works for **any** model: only needs predictions
+- Measured on held-out data, so it reflects **generalization**, not memorization
+
+## Permutation importance
+\footnotesize
+```{r perm-importance, fig.show='hide'}
+auc0 <- as.numeric(auc(y_test, p_test, quiet = TRUE))
+set.seed(1)
+perm_imp <- sapply(colnames(X_test), function(j){
+  mean(replicate(10, {                         # average over 10 shuffles
+    X_perm <- X_test
+    X_perm[, j] <- sample(X_perm[, j])         # shuffle one column
+    auc0 - as.numeric(auc(y_test, predict(xgb_fit, X_perm), quiet = TRUE))
+  }))
+})
+barplot(sort(perm_imp), horiz = TRUE, las = 1, xlab = "Drop in test AUC")
+```
+
+## Permutation importance
+Age dominates, then self-rated health, cholesterol, and BMI. Weight gets a little credit too ($r = 0.89$ with BMI):
+
+```{r perm-importance-plot, echo=FALSE, out.width="55%", fig.height=4, fig.width=6}
+par(mar = c(4, 8, 1, 1))
+barplot(sort(perm_imp), horiz = TRUE, las = 1, xlab = "Drop in test AUC")
+```
+
+# SHAP
+
+## SHAP: SHapley Additive exPlanations
+\Large
+From cooperative game theory (Shapley 1953; Lundberg \& Lee 2017):
+
+- The **features** are players on a team; the **prediction** is the payout
+- A feature's **SHAP value** $\phi_j$ is its average marginal contribution, over all orders in which features could join the team
+- Gives a **local** explanation for every individual
+
+## SHAP: additivity
+\Large
+For each individual, the SHAP values add up exactly to the prediction:
+
+$$f(\mathbf{x}) = \phi_0 + \sum_{j=1}^p \phi_j(\mathbf{x})$$
+
+- $\phi_0$ = the average prediction (baseline)
+- $\phi_j > 0$ pushes this person's prediction **up**; $\phi_j < 0$ pushes it **down**
+- For XGBoost classification, the scale is **log-odds**
+
+## SHAP for trees: TreeSHAP
+\large
+Exact Shapley values need all $2^p$ feature subsets. For tree ensembles, **TreeSHAP** computes them exactly and fast. XGBoost has it built in:
+
+\footnotesize
+```{r shap-compute}
+shap <- predict(xgb_fit, X_test, predcontrib = TRUE)   # one column per feature + BIAS
+dim(shap)
+phi0 <- shap[1, ncol(shap)]                  # baseline (log-odds)
+shap <- shap[, -ncol(shap)]
+# check additivity: baseline + sum of SHAP = predicted log-odds
+all.equal(phi0 + rowSums(shap), qlogis(p_test), tolerance = 1e-4)
+```
+
+## SHAP summary (beeswarm) plot
+```{r shap-beeswarm, echo=FALSE, out.width="65%", fig.height=4, fig.width=8}
+top <- names(sort(colMeans(abs(shap)), decreasing = TRUE))[1:8]
+shap_long <- as_tibble(shap[, top]) %>% mutate(id = row_number()) %>%
+  pivot_longer(-id, names_to = "feature", values_to = "shap") %>%
+  left_join(as_tibble(X_test[, top]) %>% mutate(id = row_number()) %>%
+              pivot_longer(-id, names_to = "feature", values_to = "value") %>%
+              group_by(feature) %>% mutate(value = percent_rank(value)),
+            by = c("id", "feature")) %>%
+  mutate(feature = factor(feature, levels = rev(top)))
+ggplot(shap_long, aes(shap, feature, color = value)) +
+  geom_vline(xintercept = 0, color = "grey60") +
+  geom_quasirandom(groupOnX = FALSE, size = 0.6, alpha = 0.7) +
+  scale_color_gradient(low = "#0072B2", high = "#D55E00", name = "Feature value\n(rank)",
+                       breaks = c(0, 1), labels = c("low", "high")) +
+  labs(x = "SHAP value (log-odds)", y = NULL) + theme_minimal(base_size = 12)
+```
+\footnotesize
+One dot per person per feature. Older age, poorer health, higher BMI (orange) push risk **up**. Higher cholesterol pushes it **down**: plausibly statin treatment in people with diabetes. **Not causal!**
+
+## SHAP global importance
+\Large
+Average the **absolute** SHAP values over people for a global ranking:
+
+```{r shap-importance, echo=FALSE, out.width="50%", fig.height=4, fig.width=6}
+par(mar = c(4, 8, 1, 1))
+barplot(sort(colMeans(abs(shap)))[-(1:(ncol(shap) - 10))], horiz = TRUE, las = 1,
+        xlab = "mean |SHAP value|")
+```
+
+## SHAP dependence plot
+How the model uses **Age** (each dot is one person; color = BMI):
+
+```{r shap-dependence, echo=FALSE, out.width="60%", fig.height=3.5, fig.width=6}
+tibble(Age = X_test[, "Age"], shap = shap[, "Age"], BMI = X_test[, "BMI"]) %>%
+  ggplot(aes(Age, shap, color = BMI)) + geom_point(size = 1, alpha = 0.7) +
+  geom_hline(yintercept = 0, color = "grey60") +
+  scale_color_viridis_c() + labs(y = "SHAP value for Age (log-odds)") +
+  theme_minimal(base_size = 12)
+```
+
+\small
+A **non-linear** effect: risk rises steeply after about 40--50, then flattens.
+
+## SHAP for one person
+```{r shap-local, echo=FALSE, out.width="65%", fig.height=3.5, fig.width=7}
+i <- which.max(p_test)
+tibble(feature = paste0(colnames(X_test), " = ", round(X_test[i, ], 1)),
+       shap = shap[i, ]) %>%
+  arrange(desc(abs(shap))) %>% slice(1:8) %>%
+  mutate(feature = fct_reorder(feature, abs(shap))) %>%
+  ggplot(aes(shap, feature, fill = shap > 0)) + geom_col(show.legend = FALSE) +
+  scale_fill_manual(values = c("#0072B2", "#D55E00")) +
+  labs(x = "SHAP value (log-odds)", y = NULL) + theme_minimal(base_size = 12)
+```
+\small
+The highest-risk test patient: predicted probability `r round(p_test[i], 2)` vs. an average of `r round(plogis(phi0), 2)` (baseline $\phi_0$). Diabetes: `r ifelse(y_test[i] == 1, "yes", "no")`.
+
+## SHAP in practice: packages
+\large
+The plots above in a few lines with **shapviz** (works with `xgboost`, `ranger`, \ldots):
+
+\footnotesize
+```{r shapviz, eval=FALSE}
+library(shapviz)
+sv <- shapviz(xgb_fit, X_pred = X_test)
+sv_importance(sv, kind = "beeswarm")   # summary plot
+sv_dependence(sv, "Age")               # dependence plot
+sv_waterfall(sv, row_id = 1)           # one person
+```
+
+\large
+For any `caret` model (slower, Monte Carlo approximation): `iml::Shapley`, or `kernelshap::kernelshap()` + `shapviz`.
+
+# LIME
+
+## LIME: Local Interpretable Model-agnostic Explanations
+\Large
+**Idea** (Ribeiro et al. 2016): near one individual $\mathbf{x}$, a complex model is roughly **linear**.
+
+1. **Perturb** $\mathbf{x}$: generate many "neighbors"
+2. **Predict** the neighbors with the black-box model
+3. **Weight** neighbors by closeness to $\mathbf{x}$
+4. **Fit** a simple (sparse linear) model to the weighted neighbors: its coefficients are the explanation
+
+## LIME in R
+\small
+The **lime** package works with `caret`, `xgboost`, and other models:
+
+\footnotesize
+```{r lime-fit}
+explainer <- lime(as.data.frame(X_train), xgb_fit)  # learns feature distributions
+cases <- c(which.max(p_test), which.min(abs(p_test - 0.05)))  # high and low risk
+set.seed(1)
+lime_res <- explain(as.data.frame(X_test[cases, ]), explainer,
+                    labels = "1",      # explain P(diabetes)
+                    n_features = 5)
+```
+
+## LIME in R
+```{r lime-plot, out.width="85%", fig.height=4, fig.width=10}
+plot_features(lime_res)
+```
+
+## LIME vs. SHAP
+\footnotesize
+| | **LIME** | **SHAP** |
+| :--- | :--- | :--- |
+| Asks | why did *this* prediction happen? | how much did each feature contribute? |
+| Basis | a simple local surrogate model | game-theoretic credit assignment |
+| Guarantees | none: depends on sampling and kernel | additive and consistent |
+| Cost | fast | exact and fast for trees (TreeSHAP); slow otherwise |
+| Scope | local only | local *and* global |
+
+\vspace{0.1cm}
+\normalsize
+LIME: a quick look at one case. SHAP: when the attribution must be defensible.
+
+## Cautions
+\Large
+- Explanations describe **the model**, not biology: **not causal** (cholesterol!)
+- **Correlated features** (BMI, weight) share or swap credit
+- **LIME is unstable**: rerun with another seed and the explanation can change
+- A good explanation of a **bad model** is still a bad model: evaluate first
+- Always sanity-check against **domain knowledge**
+
+## Looking ahead
+\Large
+In **Homework 4** you will use these tools on the **TB NanoString** data: which genes push a prediction toward TB, and which toward latent infection?
+
+## Summary
+\large
+* Global explanations: built-in and **permutation** importance
+* **SHAP**: additive, game-theoretic attributions; summary, dependence, and individual plots
+* **TreeSHAP** makes SHAP exact and fast for tree ensembles (`predcontrib = TRUE`)
+* **LIME**: a local linear surrogate around one prediction; fast but unstable
+* Explanations are **predictive, not causal**; beware correlated features
+
+## Python companion
+\Large
+Python versions of these examples (`xgboost`, `scikit-learn`'s `permutation_importance`, and the `shap` package):
+
+`python/week7/explainableAI.ipynb`
+
+## Session Info
+\tiny
+```{r session}
+sessionInfo()
+```

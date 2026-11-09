@@ -13,3 +13,6 @@ scanpy
 leidenalg
 igraph
 combat
+xgboost
+shap
+lime
