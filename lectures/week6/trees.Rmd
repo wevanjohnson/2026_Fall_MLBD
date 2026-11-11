@@ -59,6 +59,7 @@ One idea, built up in four steps:
 
 ## Motivating example: olive oil
 Composition of Italian olive oils: 8 fatty acids, 3 regions.
+\small
 ```{r}
 data("olive")
 olive <- select(olive, -area) # remove `area`; we predict `region`
@@ -258,7 +259,7 @@ $$\mbox{Gini}(j) = \sum_{k=1}^K \hat{p}_{j,k}(1-\hat{p}_{j,k}) \qquad
 
 ## Classification (decision) trees
 Digits 2 vs. 7, predicted from two pixel summaries ($x_1$, $x_2$):
-```{r mnist27-data, echo=FALSE, out.width="80%", fig.height=4, fig.width=8}
+```{r mnist27-data, echo=FALSE, out.width="62%", fig.height=4, fig.width=8}
 data("mnist_27")
 
 plot_cond_prob <- function(p_hat = NULL){
@@ -282,7 +283,7 @@ grid.arrange(p1, p2, nrow = 1)
 ## Classification (decision) trees
 Tuning the complexity parameter:
 \footnotesize
-```{r mnist-27-tree, out.width='80%', fig.height=3, fig.width=6}
+```{r mnist-27-tree, out.width="55%", fig.height=3, fig.width=6}
 set.seed(1)
 train_rpart <- train(y ~ ., method = "rpart", data = mnist_27$train,
                      tuneGrid = data.frame(cp = seq(0.0, 0.1, len = 30)))
@@ -300,7 +301,7 @@ confusionMatrix(y_hat, mnist_27$test$y)$overall["Accuracy"]
 ## Classification (decision) trees
 The estimated boundary is **blocky**: every split is parallel to an axis.
 
-```{r tree-cond-prob, echo=FALSE, out.width="80%", fig.height=4, fig.width=8}
+```{r tree-cond-prob, echo=FALSE, out.width="70%", fig.height=4, fig.width=8}
 p1 <- plot_cond_prob() + ggtitle("True conditional probability")
 p2 <- plot_cond_prob(predict(train_rpart, newdata = mnist_27$true_p, type = "prob")[,2]) +
   ggtitle("Decision Tree")
@@ -365,7 +366,7 @@ polls_2008 %>%
 ## Random forests: averaging bootstrap trees
 Grey: trees from individual bootstrap samples. Blue: their average.
 
-```{r rf-animation, echo=FALSE, out.width="90%", fig.height=4, fig.width=8}
+```{r rf-animation, echo=FALSE, out.width="82%", fig.height=3.2, fig.width=9}
 set.seed(1)
 ntrees <- 50
 XLIM <- range(polls_2008$day)
@@ -411,7 +412,7 @@ confusionMatrix(predict(train_rf, mnist_27$test),
 ```
 
 ## Random forests: digits
-```{r cond-prob-rf, echo=FALSE, out.width="80%", fig.height=4, fig.width=8}
+```{r cond-prob-rf, echo=FALSE, out.width="70%", fig.height=4, fig.width=8}
 p1 <- plot_cond_prob() + ggtitle("True conditional probability")
 p2 <- plot_cond_prob(predict(train_rf, newdata = mnist_27$true_p, type = "prob")[,2]) +
   ggtitle("Random Forest")
@@ -492,7 +493,7 @@ Forests lose the tree's interpretability. **Variable importance** recovers some 
 Eicosenoic tops the list. Oleic ranks with linoleic: the two are strongly correlated ($r \approx -0.85$), so they share the credit.
 
 \small
-```{r olive-varimp, out.width="42%", fig.height=3, fig.width=5}
+```{r olive-varimp, out.width="52%", fig.height=2.4, fig.width=6}
 imp <- importance(olive_rf, type = 1)  # permutation importance
 par(mar = c(4, 7, 1, 1))
 barplot(sort(imp[, 1]), horiz = TRUE, las = 1,

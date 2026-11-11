@@ -186,7 +186,7 @@ all.equal(phi0 + rowSums(shap), qlogis(p_test), tolerance = 1e-4)
 ```
 
 ## SHAP summary (beeswarm) plot
-```{r shap-beeswarm, echo=FALSE, out.width="65%", fig.height=4, fig.width=8}
+```{r shap-beeswarm, echo=FALSE, out.width="58%", fig.height=4, fig.width=8}
 top <- names(sort(colMeans(abs(shap)), decreasing = TRUE))[1:8]
 shap_long <- as_tibble(shap[, top]) %>% mutate(id = row_number()) %>%
   pivot_longer(-id, names_to = "feature", values_to = "shap") %>%
@@ -299,8 +299,7 @@ plot_features(lime_res)
 | Cost | fast | exact and fast for trees (TreeSHAP); slow otherwise |
 | Scope | local only | local *and* global |
 
-\vspace{0.1cm}
-\normalsize
+\small
 LIME: a quick look at one case. SHAP: when the attribution must be defensible.
 
 ## Cautions

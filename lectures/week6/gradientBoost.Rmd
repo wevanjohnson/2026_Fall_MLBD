@@ -149,7 +149,7 @@ confusionMatrix(gbm_pred, mnist_27$test$y)$overall["Accuracy"]
 ```
 
 ## Extreme gradient boosting (XGBoost)
-\Large
+\large
 **XGBoost** (Chen \& Guestrin 2016) is a fast, regularized GBM implementation:
 
 - **Regularization:** L1/L2 penalties on leaf weights and a per-split penalty ($\gamma$) in the objective

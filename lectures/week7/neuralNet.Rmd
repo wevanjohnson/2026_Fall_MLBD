@@ -240,7 +240,7 @@ Technical knowledge (TKS) and communication skill (CSS) scores (rescaled to 0--1
 df <- data.frame(TKS    = c(20, 10, 30, 20, 80, 30) / 100,
                  CSS    = c(90, 20, 40, 50, 50, 80) / 100,
                  Placed = c(1, 0, 0, 0, 1, 1))
-df
+t(df)
 ```
 
 ## A toy example: job placement
@@ -271,10 +271,11 @@ With 6 training points, this is an illustration, not a model!
 ## Iris: three classes
 \small
 `neuralnet` fits one output neuron per class (inputs scaled first; unscaled, it fails to converge):
-```{r iris-nn, out.width="50%", fig.height=4.5, fig.width=7}
+```{r iris-nn, out.width="42%", fig.height=4.5, fig.width=7}
 iris_s <- mutate(iris, across(where(is.numeric), ~ as.numeric(scale(.x))))
 set.seed(0)
-nn_iris <- neuralnet(Species ~ ., data = iris_s, hidden = 3, linear.output = FALSE)
+nn_iris <- neuralnet(Species ~ ., data = iris_s, hidden = 3,
+                     linear.output = FALSE)
 plot(nn_iris, rep = "best", information = FALSE, show.weights = FALSE)
 ```
 
@@ -301,7 +302,7 @@ NeuralNetTools::plotnet(nn_caret$finalModel)
 ## Biomarker development revisited: TB
 \small
 The TB NanoString data from the SVM lecture, same split and CV:
-\footnotesize
+\scriptsize
 ```{r tb-nn}
 tb <- readRDS("TBnanostring.rds")
 tb$TB_Status <- factor(tb$TB_Status, levels = c("LTBI", "TB"))
@@ -365,7 +366,7 @@ A **CNN** is specialized for **grid-like data** such as images:
 - Uses: medical imaging, pathology slides, video, genomic sequences
 
 \center
-![](nnFigs/Typical_cnn.png){width=80%}
+![](nnFigs/Typical_cnn.png){width=70%}
 
 ## Convolutional neural networks
 \Large

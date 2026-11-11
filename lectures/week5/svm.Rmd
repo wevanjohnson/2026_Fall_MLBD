@@ -85,7 +85,7 @@ $$\max_{\beta_0, \beta,\ \|\beta\|=1} M \quad \text{subject to} \quad y_i(\beta_
 ![](svmFigs/TESL3.png){width=60%}
 
 ## The soft margin and the cost $C$
-\Large
+\large
 Allow some points inside the margin or on the wrong side, with **slack** $\xi_i \ge 0$, and charge a cost for it:
 $$\min_{\beta_0, \beta} \ \tfrac{1}{2}\|\beta\|^2 + C\sum_{i=1}^N \xi_i \quad \text{subject to} \quad y_i(\beta_0 + x_i^T\beta) \ge 1 - \xi_i$$
 
@@ -101,6 +101,14 @@ $$\sum_{i=1}^N \max\left[0,\ 1 - y_i(\beta_0 + x_i^T\beta)\right] + \lambda\|\be
 * **Hinge loss:** zero for points correctly classified outside the margin
 * Plus an **L2 (ridge) penalty**, with $\lambda$ playing the role of $1/C$
 * Same idea as the regularization lecture, with a different loss
+
+## SVM geometry: the separating hyperplane
+\center
+![](svmFigs/TESL2.png){width=60%}
+
+## SVM geometry: margins and boundaries
+\center
+![](svmFigs/TESL4.png){width=60%}
 
 ## Support vector machines in R
 \Large
@@ -158,7 +166,7 @@ beta0 <- svmfit$rho
 ```
 
 ## Plotting the decision boundary
-```{r boundary, echo=FALSE, out.width="48%", fig.width=5, fig.height=4.5}
+```{r boundary, echo=FALSE, out.width="42%", fig.width=5, fig.height=4.5}
 par(mar = c(4, 4, 1, 1))
 plot(xgrid, col = c("red", "blue")[as.numeric(ygrid)], pch = 20, cex = .2)
 points(x, col = y + 3, pch = 19)
@@ -169,10 +177,10 @@ abline((beta0 + 1) / beta[2], -beta[1] / beta[2], lty = 2)
 ```
 
 \center
-\small Solid line: boundary. Dashed lines: margin. Diamonds: support vectors.
+\footnotesize Solid line: boundary. Dashed: margin. Diamonds: support vectors.
 
 ## The cost $C$ changes the margin
-```{r cost-compare, echo=FALSE, out.width="90%", fig.width=10, fig.height=4}
+```{r cost-compare, echo=FALSE, out.width="80%", fig.width=10, fig.height=4}
 par(mfrow = c(1, 3), mar = c(4, 4, 2, 1))
 for (cc in c(0.01, 1, 100)) {
   f <- svm(y ~ ., data = dat, kernel = "linear", cost = cc, scale = FALSE)
@@ -187,8 +195,8 @@ for (cc in c(0.01, 1, 100)) {
 }
 ```
 
-\normalsize
-Small $C$: wide margin, many support vectors. Large $C$: narrow margin, few support vectors.
+\small
+Small $C$: wide margin, many support vectors. Large $C$: narrow margin, few.
 
 ## Non-linear data
 Often the classes can't be separated by a line:
@@ -212,7 +220,7 @@ Now a flat hyperplane separates the classes:
 In the original space, the boundary is a circle:
 
 \center
-![](svmFigs/svm7.png){width=50%}
+![](svmFigs/svm7.png){width=42%}
 
 ## The kernel trick
 \Large
@@ -234,14 +242,6 @@ Radial (RBF) & $\exp(-\gamma\|x_i - x_j\|^2)$ \\
 
 \vspace{0.2in}
 Radial kernel: $\gamma$ (caret calls it `sigma`) sets how local the boundary is. Large $\gamma$: wiggly boundary, risk of overfitting.
-
-## Kernels: a look at the methodology
-\center
-![](svmFigs/TESL2.png){width=60%}
-
-## Kernels: a look at the methodology
-\center
-![](svmFigs/TESL4.png){width=60%}
 
 ## Non-linear SVM: polynomial kernel
 \small
@@ -271,7 +271,8 @@ A harder example from *The Elements of Statistical Learning*: no clean separatio
 \normalsize
 ```{r esl}
 load("ESL.mixture.rda")
-str(ESL.mixture[c("x", "y", "px1", "px2")], give.attr = FALSE)
+str(ESL.mixture[c("x", "y", "px1", "px2")],
+    give.attr = FALSE, vec.len = 2)
 dat_esl <- data.frame(y = factor(ESL.mixture$y), ESL.mixture$x)
 ```
 
